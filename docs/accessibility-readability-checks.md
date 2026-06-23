@@ -23,6 +23,17 @@ Checks should explain the viewing problem and offer a direct fix.
 
 Issues that would affect the chosen export destination should surface in `docs/export-readiness-review.md` Readability Warnings.
 
+## Issue Copy
+
+Issue copy should describe what a viewer would notice and point to the direct creator fix:
+
+- "Captions are too small in the mobile preview; increase caption size for this destination."
+- "The lower-third crowds the caption line; move it to the alternate position."
+- "This title motion repeats too intensely; reduce motion for this title card or across the template."
+- "The sponsor mark makes captions harder to read; improve contrast or simplify the overlay."
+
+Keep the language about watchability, not compliance. Each message should stay tied to the preview context and existing creator controls so the creator can fix the issue, compare the result, or keep the original with the export consequence shown.
+
 ## Preview Contexts
 
 Review readability in:
