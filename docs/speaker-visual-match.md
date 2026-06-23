@@ -61,3 +61,7 @@ Creators should judge visual matching on the episode moments where mismatches ar
 Compare the adjusted speaker against at least one other participant in the same view, and keep the chosen preset framing visible so the match still feels natural once the episode is styled.
 
 Avoid exposing scopes, histograms, or per-frame color readouts in these previews.
+
+## Maintainer Acceptance Notes
+
+Accept work that helps creators harmonize speaker video across locations with plain-language comparisons and simple brightness or warmth controls before preset and canvas styling. Close work that exposes white balance sliders, color curves, LUTs, or per-channel adjustments in the default path, or that treats visual match as a color-grading workstation instead of a cohesive-episode preview step.
