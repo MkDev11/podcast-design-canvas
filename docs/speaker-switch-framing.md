@@ -18,6 +18,8 @@ Use plain-language framing styles tied to the chosen preset:
 
 Each style should preview on a real multi-speaker moment from the current episode.
 
+Switch-style choice should stay tied to `docs/preset-style-picker.md` so creators can compare framing behavior as part of preset selection instead of treating speaker reframe style like a detached camera mode.
+
 ## Creator Controls
 
 Use simple controls:
@@ -29,6 +31,8 @@ Use simple controls:
 - reset overrides back to the preset default
 
 Avoid exposing keyframe timelines, easing curves, camera-track automation, or cut-list editing in this path.
+
+When a creator overrides switch framing for one moment, that override should still appear in `docs/long-form-navigation.md` as a reviewable moment so the creator can revisit the same exchange without hunting through the whole episode.
 
 ## When to Flag
 
@@ -43,3 +47,5 @@ These states should appear in `docs/long-form-navigation.md` navigation lanes an
 ## Template Reuse
 
 When saving a show template via `docs/show-template-adaptation.md`, the chosen switch style and speed should carry forward so recurring shows keep a consistent feel across episodes.
+
+Template reuse should preserve the default switch style while still letting each episode review whether a specific exchange needs a different framing choice.
