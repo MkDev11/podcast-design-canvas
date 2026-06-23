@@ -30,6 +30,16 @@ Cleanup should respect separate speaker tracks:
 - avoid raising background noise when boosting a quiet guest
 - preview balance on a real multi-speaker moment, not a test tone
 
+## Preview Moments
+
+Before applying cleanup, creators should be able to compare the original and cleaned version on moments that reveal real listening tradeoffs:
+
+- quiet guest answers, so improved clarity does not pull room noise forward
+- host and guest exchanges, so the balance still feels natural when the conversation moves between speakers
+- noisy room stretches, so cleanup reduces distraction without making the room feel artificial
+- sudden laughs or peak moments, so smoothing protects the listener without dulling the energy
+- caption-sensitive lines, so speech remains clear enough for trusted captions without changing the meaning
+
 ## Review States
 
 Use simple, creator-facing states:
