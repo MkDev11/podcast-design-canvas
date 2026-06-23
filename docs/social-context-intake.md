@@ -77,6 +77,22 @@ The product should use social-context status to drive setup and handoff behavior
 
 Each state should describe what gets handed off, not final approval in the intake screen itself.
 
+## Link Freshness
+
+A public link is only useful while it still resolves to the page the creator intended, so intake should quietly track whether each saved link is still reachable without nagging when everything is fine.
+
+Use one resolution status per link, and these values are mutually exclusive:
+
+- reachable — the link last resolved to a public page; this is the all-clear state and shows no marker
+- needs recheck — the link has not been confirmed since the creator changed it or since this episode reopened, so its derived suggestions still apply but may be stale
+- unreachable — the link no longer resolves publicly (removed, gone private, or moved), so it cannot contribute new suggestions
+
+A link may also carry an independent pinned details kept flag, set once a creator has pinned display details from it. This flag is orthogonal to resolution status: if an unreachable link is also pinned details kept, the already-pinned names, titles, and handles stay in place for this episode, and only new suggestion-gathering from that link stops.
+
+Surface this softly. When a link is reachable, show nothing extra. When a link is needs recheck or unreachable, show a small inline marker next to that one link in the input list with a short plain-language reason, never a banner that blocks the rest of setup. A single re-check action per link should let the creator confirm or update it in place.
+
+Resolution status only governs whether a link can feed fresh suggestions; it never auto-rejects, blocks, or unpins anything a creator already chose. Those decisions stay with the existing per-suggestion controls and the review surface where each suggestion actually appears.
+
 ## Creator Controls
 
 Keep intake about managing the inputs, not approving the visible output. The creator should be able to:
