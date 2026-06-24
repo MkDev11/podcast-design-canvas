@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Show Notes Assembly Prototype</title>
+    <style>
+      :root {
+        --ink: #17211f;
+        --muted: #60706a;
+        --line: #d7e1dd;
+        --surface: #f8fbfa;
+        --accent: #0f6a57;
+        --review: #9b5d00;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; color: var(--ink); background: #fff; }
+      main { max-width: 1160px; margin: 0 auto; padding: 32px 20px 48px; }
+      h1, h2, h3, p { margin-top: 0; }
+      h1 { margin-bottom: 8px; font-size: 32px; line-height: 1.1; }
+      .lede { color: var(--muted); max-width: 780px; }
+      .toolbar, .actions, .section-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+      .toolbar { margin: 24px 0 18px; }
+      button {
+        min-height: 38px; border: 1px solid #b9c8c3; border-radius: 6px; background: #fff;
+        color: var(--ink); font: inherit; font-weight: 700; padding: 7px 11px; cursor: pointer;
+      }
+      button.active { border-color: var(--accent); background: #def3ed; color: var(--accent); }
+      button.primary { border-color: var(--accent); background: var(--accent); color: #fff; }
+      button:disabled { opacity: 0.55; cursor: not-allowed; }
+      .workspace { display: grid; grid-template-columns: minmax(0, 1.42fr) minmax(320px, 0.88fr); gap: 24px; }
+      .panel { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 18px; }
+      .sections, .issues, .package-list { display: grid; gap: 12px; }
+      .section, .package-card {
+        border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 14px;
+      }
+      .section { display: grid; gap: 12px; }
+      .section-head, .summary-head {
+        display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+      }
+      .section-head strong, .package-card strong { display: block; margin-bottom: 4px; }
+      .section-head span, .detail, .issue span, .package-card span, .summary-note { color: var(--muted); }
+      .include-row { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+      .include-row input { min-height: auto; }
+      label.field { display: grid; gap: 6px; color: var(--muted); font-size: 13px; }
+      textarea {
+        width: 100%; min-height: 86px; border: 1px solid #bdcbc6; border-radius: 6px;
+        background: #fff; color: var(--ink); font: inherit; padding: 10px; resize: vertical;
+      }
+      .preview-block {
+        border-radius: 6px; background: #f2f7f5; padding: 10px 12px;
+        font-size: 14px; line-height: 1.45; white-space: pre-wrap;
+      }
+      .badge, .status {
+        display: inline-flex; width: fit-content; align-items: center; border-radius: 999px;
+        padding: 0 11px; font-weight: 800; white-space: nowrap;
+      }
+      .badge { min-height: 28px; font-size: 13px; }
+      .status { min-height: 32px; }
+      .badge.ready, .status.ready { background: #def3ed; color: var(--accent); }
+      .badge.review, .status.review { background: #fff1d7; color: var(--review); }
+      .badge.optional, .status.optional { background: #eceeed; color: #55615d; }
+      .issue { border-left: 4px solid var(--review); border-radius: 6px; background: #fff; padding: 10px 12px; }
+      .issue.ready { border-left-color: var(--accent); }
+      .issue strong { display: block; margin-bottom: 4px; }
+      .notes-preview {
+        margin: 14px 0; border: 1px solid var(--line); border-radius: 8px; background: #fff;
+        padding: 12px; min-height: 138px; white-space: pre-wrap; font-size: 14px; line-height: 1.5;
+      }
+      .package-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; }
+      .summary-note { margin: 12px 0 0; font-size: 13px; }
+      .actions { margin-top: 16px; }
+      @media (max-width: 900px) {
+        .workspace { grid-template-columns: 1fr; }
+        .package-card { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Show Notes Assembly Prototype</h1>
+      <p class="lede">
+        Assemble confirmed chapters, guest links, glossary spellings, and sponsor disclosure into notes that can travel with the selected export package.
+      </p>
+
+      <div class="toolbar" id="destinations" aria-label="Destination"></div>
+
+      <section class="workspace" aria-label="Show notes assembly">
+        <div class="panel">
+          <div class="summary-head">
+            <div>
+              <h2>Notes Sections</h2>
+              <p class="detail" id="destinationDetail"></p>
+            </div>
+            <span class="status review" id="summaryStatus">Needs review</span>
+          </div>
+
+          <div class="sections" id="sections"></div>
+
+          <div class="actions">
+            <button type="button" id="resetSample">Reset sample</button>
+          </div>
+        </div>
+
+        <aside class="panel" aria-live="polite">
+          <h2>Export Package</h2>
+          <div class="package-list" id="packageList"></div>
+
+          <h3 style="margin-top: 18px;">Open Items</h3>
+          <div class="issues" id="issues"></div>
+
+          <h3 style="margin-top: 18px;">Combined Notes</h3>
+          <div class="notes-preview" id="combinedPreview"></div>
+          <button type="button" class="primary" id="addToPackage">Add notes to export package</button>
+          <p class="summary-note" id="packageNote"></p>
+        </aside>
+      </section>
+    </main>
+
+    <script>
+      const destinations = {
+        youtube: {
+          label: "YouTube full episode",
+          detail: "Show notes are part of the publish package for this destination.",
+          packageLabel: "YouTube publish package",
+          requiresShowNotes: true,
+          sections: {
+            summary: true,
+            chapters: true,
+            guests: true,
+            sponsor: true,
+          },
+        },
+        review: {
+          label: "Client review copy",
+          detail: "Review copies can omit show notes without blocking the handoff.",
+          packageLabel: "Client review package",
+          requiresShowNotes: false,
+          sections: {
+            summary: false,
+            chapters: false,
+            guests: false,
+            sponsor: false,
+          },
+        },
+        archive: {
+          label: "Archive master",
+          detail: "Archive packages can keep reusable notes, but sponsor disclosure is not required here.",
+          packageLabel: "Archive master package",
+          requiresShowNotes: false,
+          sections: {
+            summary: false,
+            chapters: true,
+            guests: true,
+            sponsor: false,
+          },
+        },
+      };
+
+      const confirmedChapters = [
+        "00:00 Cold open and welcome",
+        "10:00 How the guest found the first customers",
+        "25:00 Keeping a small team focused",
+        "42:00 What the host would try next",
+      ];
+
+      const confirmedSponsor = "This episode is supported by Riverside. Sponsor placement review approved the disclosure for the publish package.";
+
+      function freshSections() {
+        return [
+          {
+            id: "summary",
+            label: "Episode summary",
+            detail: "Short viewer-facing description approved during metadata review.",
+            included: true,
+            editable: true,
+            content: "",
+            sourceReady: true,
+          },
+          {
+            id: "chapters",
+            label: "Chapter list",
+            detail: "Confirmed chapter titles in playback order.",
+            included: true,
+            editable: false,
+            content: "",
+            sourceReady: false,
+          },
+          {
+            id: "guests",
+            label: "Guest links",
+            detail: "Names and links from reusable guest profiles.",
+            included: true,
+            editable: true,
+            content: "Marcus Lee - marcuslee.example\nDana Brooks - host profile",
+            sourceReady: true,
+          },
+          {
+            id: "sponsor",
+            label: "Sponsor disclosure",
+            detail: "Disclosure text confirmed during sponsor placement review.",
+            included: true,
+            editable: false,
+            content: confirmedSponsor,
+            sourceReady: true,
+          },
+        ];
+      }
+
+      let selectedDestination = "youtube";
+      let sections = freshSections();
+      let packageSnapshot = null;
+      const sectionNodes = new Map();
+
+      const destinationsElement = document.querySelector("#destinations");
+      const destinationDetailElement = document.querySelector("#destinationDetail");
+      const summaryStatusElement = document.querySelector("#summaryStatus");
+      const sectionsElement = document.querySelector("#sections");
+      const packageListElement = document.querySelector("#packageList");
+      const issuesElement = document.querySelector("#issues");
+      const combinedPreviewElement = document.querySelector("#combinedPreview");
+      const addToPackageButton = document.querySelector("#addToPackage");
+      const packageNoteElement = document.querySelector("#packageNote");
+      const resetSampleButton = document.querySelector("#resetSample");
+
+      function currentDestination() {
+        return destinations[selectedDestination];
+      }
+
+      function sectionContent(section) {
+        if (section.id === "chapters" && section.sourceReady) {
+          return confirmedChapters.join("\n");
+        }
+        return section.content;
+      }
+
+      function evaluateSection(section) {
+        const destination = currentDestination();
+
+        if (!section.included) {
+          return {
+            state: "omitted",
+            issue: null,
+          };
+        }
+
+        if (!destination.sections[section.id]) {
+          return {
+            state: "destination mismatch",
+            issue: {
+              title: `${section.label} is not used for ${destination.label}`,
+              detail: "Hide this section before adding notes to this package, or choose a destination that uses it.",
+            },
+          };
+        }
+
+        if (!section.sourceReady) {
+          return {
+            state: "needs source",
+            issue: {
+              title: `${section.label} needs confirmed source text`,
+              detail: "Pull the confirmed chapter list before this section travels with the package.",
+            },
+          };
+        }
+
+        if (section.editable && !section.content.trim()) {
+          return {
+            state: "needs edit",
+            issue: {
+              title: `${section.label} needs copy`,
+              detail: "Write the viewer-facing text or hide this section for this destination.",
+            },
+          };
+        }
+
+        return {
+          state: "ready",
+          issue: null,
+        };
+      }
+
+      function evaluate() {
+        const destination = currentDestination();
+        const results = sections.map((section) => ({
+          section,
+          ...evaluateSection(section),
+        }));
+        const open = results.filter(({ state }) => (
+          state === "needs source" ||
+          state === "needs edit" ||
+          state === "destination mismatch"
+        ));
+        const includedReady = results.filter(({ section, state }) => section.included && state === "ready");
+        const packageReady = open.length === 0 && includedReady.length > 0;
+        const overall = destination.requiresShowNotes
+          ? (open.length ? "review" : "ready")
+          : (open.length ? "optional" : "ready");
+
+        return {
+          destination,
+          results,
+          open,
+          includedReady,
+          packageReady,
+          overall,
+        };
+      }
+
+      function buildCombinedNotes(results) {
+        const blocks = results
+          .filter(({ section, state }) => section.included && state === "ready")
+          .map(({ section }) => {
+            const body = sectionContent(section).trim();
+            return body ? `${section.label}\n${body}` : null;
+          })
+          .filter(Boolean);
+
+        return blocks.length ? blocks.join("\n\n") : "No show notes are ready for this destination yet.";
+      }
+
+      function stateClass(state) {
+        if (state === "ready") return "ready";
+        if (state === "omitted") return "optional";
+        return "review";
+      }
+
+      function invalidatePackage() {
+        packageSnapshot = null;
+      }
+
+      function createText(tag, text, className) {
+        const element = document.createElement(tag);
+        if (className) {
+          element.className = className;
+        }
+        element.textContent = text;
+        return element;
+      }
+
+      function renderDestinations() {
+        destinationsElement.replaceChildren(
+          ...Object.entries(destinations).map(([id, destination]) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = id === selectedDestination ? "active" : "";
+            button.textContent = destination.label;
+            button.addEventListener("click", () => {
+              selectedDestination = id;
+              invalidatePackage();
+              render();
+            });
+            return button;
+          }),
+        );
+      }
+
+      function renderSection(result, index) {
+        const { section, state } = result;
+        const article = document.createElement("article");
+        article.className = "section";
+
+        const head = document.createElement("div");
+        head.className = "section-head";
+        const titleWrap = document.createElement("div");
+        titleWrap.append(
+          createText("strong", section.label),
+          createText("span", section.detail, "detail"),
+        );
+        const badge = createText("span", state, `badge ${stateClass(state)}`);
+        head.append(titleWrap, badge);
+
+        const includeRow = document.createElement("label");
+        includeRow.className = "include-row";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = section.included;
+        checkbox.addEventListener("change", () => {
+          sections[index].included = checkbox.checked;
+          invalidatePackage();
+          render();
+        });
+        includeRow.append(checkbox, document.createTextNode("Include in assembled notes"));
+
+        article.append(head, includeRow);
+
+        if (section.included) {
+          if (section.editable) {
+            const field = document.createElement("label");
+            field.className = "field";
+            field.textContent = section.id === "summary" ? "Summary copy" : "Guest and link copy";
+            const textarea = document.createElement("textarea");
+            textarea.value = section.content;
+            textarea.placeholder = section.id === "summary"
+              ? "Write a concise viewer-facing episode summary."
+              : "Confirm guest names and links.";
+            textarea.addEventListener("input", () => {
+              sections[index].content = textarea.value;
+              invalidatePackage();
+              refresh();
+            });
+            field.append(textarea);
+            article.append(field);
+          } else {
+            const preview = createText(
+              "div",
+              section.sourceReady ? sectionContent(section) : "Waiting on confirmed source text.",
+              "preview-block",
+            );
+            article.append(preview);
+
+            if (section.id === "chapters") {
+              const actions = document.createElement("div");
+              actions.className = "section-actions";
+              const pullButton = document.createElement("button");
+              pullButton.type = "button";
+              pullButton.textContent = section.sourceReady ? "Confirmed chapters pulled" : "Pull confirmed chapters";
+              pullButton.disabled = section.sourceReady;
+              pullButton.addEventListener("click", () => {
+                sections[index].sourceReady = true;
+                invalidatePackage();
+                render();
+              });
+              actions.append(pullButton);
+              article.append(actions);
+            }
+          }
+        }
+
+        sectionNodes.set(section.id, { badge });
+        return article;
+      }
+
+      function renderSections(evaluation) {
+        sectionNodes.clear();
+        sectionsElement.replaceChildren(
+          ...evaluation.results.map((result, index) => renderSection(result, index)),
+        );
+      }
+
+      function renderIssue(issue) {
+        const article = document.createElement("article");
+        article.className = "issue";
+        article.append(
+          createText("strong", issue.title),
+          createText("span", issue.detail),
+        );
+        return article;
+      }
+
+      function renderReadyIssue(evaluation) {
+        const article = document.createElement("article");
+        article.className = "issue ready";
+        const title = evaluation.destination.requiresShowNotes
+          ? "Ready for the export package"
+          : "Optional for this destination";
+        const detail = evaluation.destination.requiresShowNotes
+          ? "Every included section is ready to add to the package."
+          : "This destination can ship without show notes, but ready notes can still be stored with the package.";
+        article.append(createText("strong", title), createText("span", detail));
+        return article;
+      }
+
+      function renderPackageCard(title, detail, badgeText, badgeClass) {
+        const card = document.createElement("article");
+        card.className = "package-card";
+        const copy = document.createElement("div");
+        copy.append(createText("strong", title), createText("span", detail));
+        card.append(copy, createText("span", badgeText, `badge ${badgeClass}`));
+        return card;
+      }
+
+      function renderPackage(evaluation) {
+        const sectionList = evaluation.includedReady
+          .map(({ section }) => section.label.toLowerCase())
+          .join(", ");
+
+        if (packageSnapshot && packageSnapshot.destination === selectedDestination) {
+          packageListElement.replaceChildren(
+            renderPackageCard(
+              packageSnapshot.label,
+              `${packageSnapshot.sections} added to the package summary.`,
+              "included",
+              "ready",
+            ),
+            renderPackageCard(
+              "Package state",
+              "Show notes text is now visible in the export handoff area below.",
+              "complete",
+              "ready",
+            ),
+          );
+          combinedPreviewElement.textContent = packageSnapshot.notes;
+          packageNoteElement.textContent = "Changing destination, section inclusion, or editable copy will reopen the package item before export.";
+          addToPackageButton.disabled = true;
+          addToPackageButton.textContent = "Notes added to package";
+          return;
+        }
+
+        const statusDetail = evaluation.packageReady
+          ? `${sectionList} can be added to ${evaluation.destination.packageLabel}.`
+          : evaluation.destination.requiresShowNotes
+            ? "Resolve the open sections before adding notes to the required publish package."
+            : "This package can ship without show notes; clean up open sections before adding optional notes.";
+        const badgeText = evaluation.packageReady
+          ? "ready"
+          : evaluation.destination.requiresShowNotes
+            ? "review"
+            : "optional";
+        const badgeClass = evaluation.packageReady
+          ? "ready"
+          : evaluation.destination.requiresShowNotes
+            ? "review"
+            : "optional";
+
+        packageListElement.replaceChildren(
+          renderPackageCard(evaluation.destination.packageLabel, statusDetail, badgeText, badgeClass),
+          renderPackageCard(
+            "Included sections",
+            sectionList || "No ready sections included yet.",
+            `${evaluation.includedReady.length} ready`,
+            evaluation.includedReady.length ? "ready" : "optional",
+          ),
+        );
+        combinedPreviewElement.textContent = buildCombinedNotes(evaluation.results);
+        packageNoteElement.textContent = evaluation.destination.requiresShowNotes
+          ? "Show notes stay tied to confirmed metadata and the chosen destination."
+          : "Omitting show notes here does not block export readiness.";
+        addToPackageButton.disabled = !evaluation.packageReady;
+        addToPackageButton.textContent = evaluation.destination.requiresShowNotes
+          ? "Add notes to export package"
+          : "Add optional notes to package";
+      }
+
+      function renderSummary(evaluation) {
+        destinationDetailElement.textContent = evaluation.destination.detail;
+        summaryStatusElement.className = `status ${evaluation.overall}`;
+        if (evaluation.overall === "ready") {
+          summaryStatusElement.textContent = evaluation.destination.requiresShowNotes
+            ? "Show notes ready"
+            : "Optional notes ready";
+        } else if (evaluation.overall === "optional") {
+          summaryStatusElement.textContent = "Optional cleanup";
+        } else {
+          summaryStatusElement.textContent = `${evaluation.open.length} open`;
+        }
+
+        issuesElement.replaceChildren(
+          ...(evaluation.open.length
+            ? evaluation.open.map(({ issue }) => renderIssue(issue))
+            : [renderReadyIssue(evaluation)]),
+        );
+      }
+
+      function refresh() {
+        const evaluation = evaluate();
+        evaluation.results.forEach(({ section, state }) => {
+          const node = sectionNodes.get(section.id);
+          if (node) {
+            node.badge.className = `badge ${stateClass(state)}`;
+            node.badge.textContent = state;
+          }
+        });
+        renderSummary(evaluation);
+        renderPackage(evaluation);
+      }
+
+      function render() {
+        renderDestinations();
+        const evaluation = evaluate();
+        renderSections(evaluation);
+        renderSummary(evaluation);
+        renderPackage(evaluation);
+      }
+
+      addToPackageButton.addEventListener("click", () => {
+        const evaluation = evaluate();
+        if (!evaluation.packageReady) {
+          return;
+        }
+        packageSnapshot = {
+          destination: selectedDestination,
+          label: evaluation.destination.packageLabel,
+          sections: evaluation.includedReady.map(({ section }) => section.label).join(", "),
+          notes: buildCombinedNotes(evaluation.results),
+        };
+        renderPackage(evaluation);
+      });
+
+      resetSampleButton.addEventListener("click", () => {
+        selectedDestination = "youtube";
+        sections = freshSections();
+        packageSnapshot = null;
+        render();
+      });
+
+      render();
+    </script>
+  </body>
+</html>
