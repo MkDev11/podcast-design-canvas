@@ -270,6 +270,26 @@
         margin-bottom: 18px;
       }
 
+      .compare-section {
+        display: grid;
+        gap: 8px;
+        margin-bottom: 18px;
+      }
+
+      .compare-section h2 {
+        margin-bottom: 0;
+      }
+
+      .compare-context {
+        color: var(--muted);
+        font-size: 13px;
+        margin: 0;
+      }
+
+      .compare-section .compare {
+        margin-bottom: 0;
+      }
+
       .preview-card {
         border: 1px solid var(--line);
         border-radius: 8px;
@@ -442,8 +462,7 @@
           <p class="preview-tradeoff" id="preview-tradeoff" aria-live="polite"></p>
           <p class="moment-hint" id="moment-hint" aria-live="polite"></p>
 
-          <h2>Compare on this moment</h2>
-          <div class="compare" id="compare" aria-live="polite"></div>
+          <div class="compare-section" id="compare-section" aria-live="polite"></div>
 
           <h2>Speaker balance</h2>
           <div class="cleanup-rollup" id="cleanupRollup" aria-live="polite"></div>
@@ -499,7 +518,7 @@
 
       const controlsElement = document.querySelector("#controls");
       const momentsElement = document.querySelector("#moments");
-      const compareElement = document.querySelector("#compare");
+      const compareSectionElement = document.querySelector("#compare-section");
       const speakersElement = document.querySelector("#speakers");
       const rollupElement = document.querySelector("#cleanupRollup");
       const statusElement = document.querySelector("#status");
@@ -530,7 +549,7 @@
 
         controlsElement.replaceChildren(...choices.map(renderChoice));
         momentsElement.replaceChildren(...previewMoments.map(renderMoment));
-        renderCompare();
+        renderCompareSection();
         speakersElement.replaceChildren(
           ...speakers.map((speaker, index) => {
             const filteredOut = showReviewOnly && !needsReviewState(speaker.state);
@@ -881,14 +900,30 @@
           .join("");
       }
 
-      function renderCompare() {
+      function compareContextCopy() {
+        const moment = previewMoments.find((entry) => entry.id === preview);
+        const momentLabel = moment?.label;
+        const choiceCount = enabled.size;
+
+        if (choiceCount && momentLabel) {
+          return `${momentLabel} · ${choiceCount} cleanup choice${choiceCount === 1 ? "" : "s"} active`;
+        }
+        if (momentLabel) {
+          return `${momentLabel} · turn on a cleanup choice to preview the difference`;
+        }
+        return "";
+      }
+
+      function renderCompareSection() {
+        const compare = document.createElement("div");
+        compare.className = "compare";
         const moment = previewMoments.find((entry) => entry.id === preview);
         const profileBars = momentProfiles[preview] ?? momentProfiles["quiet-guest"];
         const original = Array.isArray(profileBars) ? [...profileBars] : [];
         const cleaned = buildCleanedPreview(original);
         const effects = activeEffects();
 
-        compareElement.replaceChildren(
+        compare.replaceChildren(
           renderPreviewCard("Original", original, false, "What listeners hear now."),
           renderPreviewCard(
             "With cleanup",
@@ -898,6 +933,15 @@
             effects,
           ),
         );
+
+        const heading = document.createElement("h2");
+        heading.textContent = "Compare on this moment";
+
+        const context = document.createElement("p");
+        context.className = "compare-context";
+        context.textContent = compareContextCopy();
+
+        compareSectionElement.replaceChildren(heading, context, compare);
       }
 
       function renderPreviewCard(title, heights, cleaned, note, effects = []) {
