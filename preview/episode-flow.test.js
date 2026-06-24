@@ -105,6 +105,101 @@ const script = flow.match(/<script>([\s\S]*?)<\/script>/)[1];
 const vm = require("vm");
 new vm.Script(script);
 
+function createElement(tagName) {
+  return {
+    tagName,
+    attributes: {},
+    children: [],
+    className: "",
+    disabled: false,
+    href: "",
+    style: {},
+    textContent: "",
+    append(...children) {
+      this.children.push(...children);
+    },
+    appendChild(child) {
+      this.children.push(child);
+      return child;
+    },
+    replaceChildren(...children) {
+      this.children = children;
+    },
+    setAttribute(name, value) {
+      this.attributes[name] = value;
+    },
+    addEventListener(event, handler) {
+      this[`on${event}`] = handler;
+    },
+    click() {
+      if (!this.disabled && this.onclick) {
+        this.onclick({ target: this });
+      }
+    },
+  };
+}
+
+function flatten(node) {
+  return [node, ...node.children.flatMap(flatten)];
+}
+
+function runFlow() {
+  const roots = {
+    "#stepper": createElement("ol"),
+    "#progress": createElement("i"),
+    "#currentStatus": createElement("strong"),
+    "#readyStatus": createElement("strong"),
+    "#nextStatus": createElement("strong"),
+    "#panel": createElement("section"),
+    "#back": createElement("button"),
+    "#next": createElement("button"),
+    "#gate": createElement("span"),
+  };
+  const document = {
+    createElement,
+    querySelector(selector) {
+      return roots[selector] || null;
+    },
+  };
+  vm.runInNewContext(script, { document });
+  return roots;
+}
+
+function linkWithText(root, text) {
+  const link = flatten(root).find((node) => node.tagName === "a" && node.textContent === text);
+  assert.ok(link, `Missing link: ${text}`);
+  return link;
+}
+
+function buttonWithText(root, text) {
+  const button = flatten(root).find((node) => node.tagName === "button" && node.textContent === text);
+  assert.ok(button, `Missing button: ${text}`);
+  return button;
+}
+
+const flowUi = runFlow();
+assert.equal(
+  linkWithText(flowUi["#panel"], "Open the full Episode readiness screen →").href,
+  "../prototype/episode-readiness.html?path=episode",
+  "rendered readiness full-screen link keeps the episode path context",
+);
+
+buttonWithText(flowUi["#panel"], "Add speaker name").click();
+flowUi["#next"].click();
+assert.equal(
+  linkWithText(flowUi["#panel"], "Open the full Speaker role mapping screen →").href,
+  "../prototype/speaker-role-mapping.html?path=episode",
+  "rendered role-mapping full-screen link keeps the episode path context",
+);
+
+buttonWithText(flowUi["#panel"], "Confirm roles").click();
+flowUi["#next"].click();
+assert.equal(
+  linkWithText(flowUi["#panel"], "Open the full Source media health screen →").href,
+  "../prototype/source-media-health.html",
+  "rendered source-media full-screen link stays on the normal prototype URL",
+);
+
 assert.ok(fs.existsSync(path.join(root, "preview", "episode-flow.html")), "flow page exists for routing");
 
 console.log("episode flow (connected path smoke): all assertions passed");

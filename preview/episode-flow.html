@@ -670,6 +670,7 @@
         captions: ["audio-caption-quality-review", "Caption quality review"],
         export: ["export-readiness-review", "Export readiness review"],
       };
+      const episodePathScreenIds = new Set(["readiness", "roles"]);
 
       const publishPrepHandoff = {
         file: "../prototype/episode-watch-through-preview.html",
@@ -704,10 +705,15 @@
         const wrap = document.createElement("p");
         wrap.className = "step-screen";
         const link = document.createElement("a");
-        link.href = `../prototype/${file}.html`;
+        link.href = stepScreenHref(id, file);
         link.textContent = `Open the full ${label} screen →`;
         wrap.append(link);
         return wrap;
+      }
+
+      function stepScreenHref(id, file) {
+        const pathSuffix = episodePathScreenIds.has(id) ? "?path=episode" : "";
+        return `../prototype/${file}.html${pathSuffix}`;
       }
 
       function renderPublishPrepHandoff() {
