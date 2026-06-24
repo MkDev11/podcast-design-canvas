@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Start From Previous Episode Prototype</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #16211f;
+        --muted: #5e6b67;
+        --line: #d9e0dd;
+        --panel: #f7faf8;
+        --accent: #136f63;
+        --warn: #a15c00;
+        --info: #2a4c8a;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      * { box-sizing: border-box; }
+      body { margin: 0; color: var(--ink); background: #ffffff; }
+      main { max-width: 1180px; margin: 0 auto; padding: 32px 20px 48px; }
+      h1, h2, h3, p { margin-top: 0; }
+      h1 { margin-bottom: 8px; font-size: 32px; line-height: 1.1; }
+      h2 { margin-bottom: 12px; }
+      .lede { color: var(--muted); max-width: 780px; }
+      .workspace { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.9fr); gap: 24px; margin-top: 28px; }
+      .panel { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 18px; }
+      .grid { display: grid; gap: 14px; }
+      .row { display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 12px; align-items: start; }
+      label { display: grid; gap: 6px; color: var(--muted); font-size: 13px; }
+      select {
+        width: 100%; min-height: 40px; border: 1px solid #bfcbc7; border-radius: 6px;
+        background: #ffffff; color: var(--ink); font: inherit; padding: 8px 10px;
+      }
+      button {
+        min-height: 38px; border: 1px solid #b9c8c3; border-radius: 6px; background: #ffffff;
+        color: var(--ink); font: inherit; font-weight: 700; padding: 7px 11px; cursor: pointer;
+      }
+      button.primary { border-color: var(--accent); background: var(--accent); color: #ffffff; }
+      button:disabled { opacity: 0.55; cursor: not-allowed; }
+      .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+
+      .carry-list, .role-list, .issues, .draft-list { display: grid; gap: 10px; }
+      .carry-item, .role-card, .issue, .draft-card {
+        border: 1px solid var(--line); border-radius: 8px; background: #ffffff; padding: 12px;
+      }
+      .carry-item { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; }
+      .carry-item input { margin-top: 3px; }
+      .carry-item strong, .role-card strong, .issue strong, .draft-card strong { display: block; margin-bottom: 4px; }
+      .carry-item span, .role-card span, .issue span, .draft-card span, .detail { color: var(--muted); font-size: 13px; line-height: 1.45; }
+      .role-card { display: grid; gap: 10px; }
+      .role-head, .summary-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+
+      .status, .badge {
+        display: inline-flex; width: fit-content; align-items: center; border-radius: 999px;
+        padding: 0 11px; font-weight: 800; white-space: nowrap;
+      }
+      .status { min-height: 32px; }
+      .badge { min-height: 28px; font-size: 13px; }
+      .ready { color: #075246; background: #dff5ef; }
+      .review { color: #7a4400; background: #fff1d6; }
+      .route { color: var(--info); background: #e2ebfb; }
+
+      .preview-frame {
+        position: relative; overflow: hidden; aspect-ratio: 16 / 9; border: 1px solid #101816;
+        border-radius: 8px; background:
+          linear-gradient(180deg, rgba(16, 24, 22, 0) 58%, rgba(16, 24, 22, 0.72)),
+          linear-gradient(135deg, #174f49, #315676 58%, #6d5d83);
+      }
+      .chip {
+        position: absolute; z-index: 3; border-radius: 999px; background: rgba(246, 251, 249, 0.94);
+        color: #14211d; font-size: 12px; font-weight: 800; padding: 6px 9px;
+      }
+      .chip.template { top: 16px; left: 16px; }
+      .chip.state { top: 16px; right: 16px; }
+      .speaker-layout {
+        position: absolute; inset: 16% 12% 20%; display: grid; grid-template-columns: 1fr 1fr; gap: 4%;
+      }
+      .speaker {
+        position: relative; overflow: hidden; border-radius: 8px;
+        background: repeating-linear-gradient(135deg, #c9d2cf, #c9d2cf 8px, #dde3e1 8px, #dde3e1 16px);
+      }
+      .speaker.ready { background: linear-gradient(160deg, #8bc8bd, #1b5f56); }
+      .speaker.guest.ready { background: linear-gradient(160deg, #a5b4da, #405074); }
+      .speaker::before {
+        content: ""; position: absolute; top: 19%; left: 50%; width: 25%; aspect-ratio: 1;
+        transform: translateX(-50%); border-radius: 50%; background: #eef7f4;
+      }
+      .speaker::after {
+        content: ""; position: absolute; right: 29%; bottom: 12%; left: 29%; height: 32%;
+        border-radius: 999px 999px 0 0; background: #dcefeb;
+      }
+      .lower-third {
+        position: absolute; left: 10px; bottom: 10px; z-index: 2; border-radius: 5px;
+        background: rgba(16, 24, 22, 0.82); color: #ffffff; font-size: 12px;
+        font-weight: 800; padding: 5px 8px;
+      }
+      .title-card {
+        position: absolute; right: 12%; bottom: 12%; left: 12%; z-index: 3; border-radius: 6px;
+        background: rgba(246, 251, 249, 0.94); color: #17211f; font-weight: 800;
+        line-height: 1.3; padding: 9px 12px; text-align: center;
+      }
+
+      .summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
+      .summary-card { border: 1px solid var(--line); border-radius: 8px; background: #ffffff; padding: 12px; }
+      .summary-card strong { display: block; font-size: 24px; line-height: 1; }
+      .summary-card span { color: var(--muted); font-size: 13px; }
+      .issue { border-left: 4px solid var(--warn); border-radius: 6px; }
+      .issue.ready { border-left-color: var(--accent); }
+      .issue.route { border-left-color: var(--info); }
+
+      @media (max-width: 920px) {
+        .workspace, .row { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Start From Previous Episode Prototype</h1>
+      <p class="lede">
+        Begin the next episode from a proven recent draft, keep the reusable show structure, and confirm new media before styling continues.
+      </p>
+
+      <section class="workspace" aria-label="Start from previous episode">
+        <div class="panel">
+          <div class="summary-head">
+            <div>
+              <h2>Recent Episode Starter</h2>
+              <p class="detail">Reusable look and structure carry forward. Last episode's guest, topic, recordings, and one-off moments stay cleared.</p>
+            </div>
+            <span class="status review" id="statusBadge">Choose starter</span>
+          </div>
+
+          <div class="grid">
+            <div class="row">
+              <label>
+                Previous episode
+                <select id="episodeSelect"></select>
+              </label>
+              <button type="button" class="primary" id="startDraft">Start draft</button>
+            </div>
+
+            <h3>Carry Forward</h3>
+            <div class="carry-list" id="carryList"></div>
+
+            <h3>New Episode Media</h3>
+            <div class="role-list" id="roleList"></div>
+
+            <div class="actions">
+              <button type="button" id="importMedia">Import new recordings</button>
+              <button type="button" id="confirmRoles">Confirm roles</button>
+              <button type="button" id="continueStyle">Continue to styling</button>
+              <button type="button" id="saveTemplate">Save refinements to template</button>
+              <button type="button" id="resetSample">Reset sample</button>
+            </div>
+          </div>
+        </div>
+
+        <aside class="panel" aria-live="polite">
+          <h2>Draft Preview</h2>
+          <div class="preview-frame" id="previewFrame"></div>
+          <div class="summary-grid" id="summaryGrid"></div>
+
+          <h3>What This Means</h3>
+          <div class="issues" id="issues"></div>
+
+          <h3 style="margin-top: 18px;">Draft Contents</h3>
+          <div class="draft-list" id="draftList"></div>
+        </aside>
+      </section>
+    </main>
+
+    <script>
+      const episodes = [
+        {
+          id: "ep42",
+          label: "Ep 42 - Founder interview",
+          template: "Interview split-screen",
+          style: "Warm studio preset",
+          previousGuest: "Marcus Lee",
+          previousTopic: "first customers",
+        },
+        {
+          id: "ep41",
+          label: "Ep 41 - Product teardown",
+          template: "Two-up analysis",
+          style: "Clean chapter pacing",
+          previousGuest: "Dana Brooks",
+          previousTopic: "pricing lessons",
+        },
+      ];
+
+      const carryItems = [
+        ["layout", "Layout and preset style", "Keep the proven speaker framing, title treatment, and pacing defaults."],
+        ["brand", "Show identity", "Reuse the brand kit, lower-third style, caption placement, and intro treatment."],
+        ["segments", "Recurring segment order", "Bring over the cold open, host intro, main conversation, and outro structure."],
+        ["roles", "Host role buckets", "Keep Host and Guest buckets as empty slots ready for the new recordings."],
+        ["export", "Export destination defaults", "Reuse the show's usual full-episode and archive package choices."],
+      ];
+
+      const newRecordings = {
+        host: ["Choose recording", "Maya host camera", "Jordan guest camera"],
+        guest: ["Choose recording", "Maya host camera", "Jordan guest camera"],
+      };
+
+      let state = freshState();
+
+      const episodeSelect = document.querySelector("#episodeSelect");
+      const startDraftButton = document.querySelector("#startDraft");
+      const carryList = document.querySelector("#carryList");
+      const roleList = document.querySelector("#roleList");
+      const importMediaButton = document.querySelector("#importMedia");
+      const confirmRolesButton = document.querySelector("#confirmRoles");
+      const continueStyleButton = document.querySelector("#continueStyle");
+      const saveTemplateButton = document.querySelector("#saveTemplate");
+      const resetSampleButton = document.querySelector("#resetSample");
+      const statusBadge = document.querySelector("#statusBadge");
+      const previewFrame = document.querySelector("#previewFrame");
+      const summaryGrid = document.querySelector("#summaryGrid");
+      const issuesElement = document.querySelector("#issues");
+      const draftList = document.querySelector("#draftList");
+
+      function freshState() {
+        return {
+          selectedEpisode: "ep42",
+          started: false,
+          mediaImported: false,
+          hostTrack: "Choose recording",
+          guestTrack: "Choose recording",
+          rolesConfirmed: false,
+          readyToStyle: false,
+          templateSaved: false,
+          carry: {
+            layout: true,
+            brand: true,
+            segments: true,
+            roles: true,
+            export: true,
+          },
+        };
+      }
+
+      function currentEpisode() {
+        return episodes.find((episode) => episode.id === state.selectedEpisode) || episodes[0];
+      }
+
+      function stage() {
+        if (state.templateSaved) return "saved to template";
+        if (state.readyToStyle) return "ready to style";
+        if (state.rolesConfirmed) return "roles confirmed";
+        if (state.mediaImported) return "media replaced";
+        if (state.started) return "draft from previous";
+        return "choose starter";
+      }
+
+      function createText(tag, text, className) {
+        const element = document.createElement(tag);
+        if (className) {
+          element.className = className;
+        }
+        element.textContent = text;
+        return element;
+      }
+
+      function renderOptions() {
+        episodeSelect.replaceChildren(
+          ...episodes.map((episode) => {
+            const option = document.createElement("option");
+            option.value = episode.id;
+            option.textContent = episode.label;
+            return option;
+          }),
+        );
+        episodeSelect.value = state.selectedEpisode;
+      }
+
+      function resetProgressAfterCarryChange() {
+        if (state.readyToStyle || state.templateSaved) {
+          state.readyToStyle = false;
+          state.templateSaved = false;
+        }
+      }
+
+      function renderCarryList() {
+        carryList.replaceChildren(
+          ...carryItems.map(([id, label, detail]) => {
+            const item = document.createElement("label");
+            item.className = "carry-item";
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.checked = state.carry[id];
+            checkbox.addEventListener("change", () => {
+              state.carry[id] = checkbox.checked;
+              resetProgressAfterCarryChange();
+              render();
+            });
+            const copy = document.createElement("div");
+            copy.append(createText("strong", label), createText("span", detail));
+            item.append(checkbox, copy);
+            return item;
+          }),
+        );
+      }
+
+      function renderTrackSelect(role, value) {
+        const label = document.createElement("label");
+        label.textContent = `${role} recording`;
+        const select = document.createElement("select");
+        select.disabled = !state.mediaImported;
+        newRecordings[role.toLowerCase()].forEach((recording) => {
+          const option = document.createElement("option");
+          option.value = recording;
+          option.textContent = recording;
+          select.appendChild(option);
+        });
+        select.value = value;
+        select.addEventListener("change", () => {
+          if (role === "Host") {
+            state.hostTrack = select.value;
+          } else {
+            state.guestTrack = select.value;
+          }
+          state.rolesConfirmed = false;
+          state.readyToStyle = false;
+          state.templateSaved = false;
+          render();
+        });
+        label.append(select);
+        return label;
+      }
+
+      function roleIssue() {
+        if (!state.started) return "Start a draft before importing new recordings.";
+        if (!state.mediaImported) return "Import the new episode's recordings into the empty speaker buckets.";
+        if (state.hostTrack === "Choose recording" || state.guestTrack === "Choose recording") return "Choose one recording for each role.";
+        if (state.hostTrack === state.guestTrack) return "Host and Guest cannot use the same recording.";
+        if (!state.rolesConfirmed) return "Confirm the new speaker roles before styling.";
+        return null;
+      }
+
+      function renderRoleList() {
+        const cards = [
+          ["Host", state.hostTrack, "Reused host bucket waits for the new host recording."],
+          ["Guest", state.guestTrack, "Previous guest is cleared; choose the new guest recording."],
+        ].map(([role, value, detail]) => {
+          const card = document.createElement("article");
+          card.className = "role-card";
+          const head = document.createElement("div");
+          head.className = "role-head";
+          head.append(
+            createText("strong", role),
+            createText("span", value === "Choose recording" ? "needs recording" : state.rolesConfirmed ? "confirmed" : "needs confirm", `badge ${state.rolesConfirmed ? "ready" : "review"}`),
+          );
+          card.append(head, createText("span", detail), renderTrackSelect(role, value));
+          return card;
+        });
+        roleList.replaceChildren(...cards);
+      }
+
+      function renderPreview() {
+        const episode = currentEpisode();
+        const hostReady = state.hostTrack !== "Choose recording";
+        const guestReady = state.guestTrack !== "Choose recording";
+        const templateChip = createText("span", episode.template, "chip template");
+        const stateChip = createText("span", stage(), "chip state");
+        const layout = document.createElement("div");
+        layout.className = "speaker-layout";
+        layout.append(
+          createText("div", "", hostReady ? "speaker ready" : "speaker"),
+          createText("div", "", guestReady ? "speaker guest ready" : "speaker guest"),
+        );
+        const lower = createText("div", hostReady && guestReady ? "New episode roles" : "Empty speaker buckets", "lower-third");
+        const title = createText("div", state.started ? "Previous guest and topic cleared for the next episode" : "Choose a recent episode to start", "title-card");
+        previewFrame.replaceChildren(templateChip, stateChip, layout, lower, title);
+      }
+
+      function renderSummary() {
+        const carried = Object.values(state.carry).filter(Boolean).length;
+        const cards = [
+          ["State", stage(), "creator-facing draft status"],
+          ["Carried", `${carried} of ${carryItems.length}`, "reusable parts selected"],
+          ["Media", state.mediaImported ? "new files" : "empty", "previous recordings are not reused"],
+          ["Template", state.templateSaved ? "updated" : "unchanged", "finished episode stays untouched"],
+        ].map(([label, value, detail]) => {
+          const card = document.createElement("div");
+          card.className = "summary-card";
+          card.append(createText("span", label), createText("strong", value), createText("span", detail));
+          return card;
+        });
+        summaryGrid.replaceChildren(...cards);
+      }
+
+      function renderIssues() {
+        const issues = [];
+        const role = roleIssue();
+        if (!state.started) {
+          issues.push(["route", "Start from a recent episode", "The previous episode provides reusable structure only after the creator starts a new draft."]);
+        } else {
+          issues.push(["ready", "Previous episode stays finished", "Editing this draft does not change the exported episode it started from."]);
+        }
+        if (role) {
+          issues.push(["route", "Ingest still needs confirmation", role]);
+        } else {
+          issues.push(["ready", "Ready for preset styling", "New recordings are mapped to the carried-forward speaker buckets."]);
+        }
+        if (state.templateSaved) {
+          issues.push(["ready", "Future episodes updated", "Only reusable refinements move back to the show template. This draft remains separate."]);
+        }
+
+        issuesElement.replaceChildren(
+          ...issues.map(([tone, title, detail]) => {
+            const item = document.createElement("article");
+            item.className = `issue ${tone}`;
+            item.append(createText("strong", title), createText("span", detail));
+            return item;
+          }),
+        );
+      }
+
+      function renderDraftList() {
+        const episode = currentEpisode();
+        const items = [
+          ["Reusable style", state.started ? `${episode.style} carried into the draft.` : "Waiting for starter choice."],
+          ["Cleared by default", `${episode.previousGuest}, ${episode.previousTopic}, previous recordings, and one-off moments are not copied.`],
+          ["Speaker buckets", state.mediaImported ? "New recordings are available for Host and Guest." : "Buckets are empty until new recordings are imported."],
+          ["Template boundary", state.templateSaved ? "Reusable refinements saved for future episodes." : "No template changes have been saved."],
+        ].map(([title, detail]) => {
+          const card = document.createElement("article");
+          card.className = "draft-card";
+          card.append(createText("strong", title), createText("span", detail));
+          return card;
+        });
+        draftList.replaceChildren(...items);
+      }
+
+      function updateButtons() {
+        startDraftButton.disabled = state.started;
+        importMediaButton.disabled = !state.started || state.mediaImported;
+        confirmRolesButton.disabled = !state.mediaImported || state.hostTrack === "Choose recording" || state.guestTrack === "Choose recording" || state.hostTrack === state.guestTrack || state.rolesConfirmed;
+        continueStyleButton.disabled = !state.rolesConfirmed || state.readyToStyle;
+        saveTemplateButton.disabled = !state.readyToStyle || state.templateSaved;
+      }
+
+      function render() {
+        renderOptions();
+        renderCarryList();
+        renderRoleList();
+        renderPreview();
+        renderSummary();
+        renderIssues();
+        renderDraftList();
+        updateButtons();
+        const currentStage = stage();
+        statusBadge.className = `status ${currentStage === "ready to style" || currentStage === "saved to template" ? "ready" : currentStage === "media replaced" || currentStage === "roles confirmed" ? "route" : "review"}`;
+        statusBadge.textContent = currentStage;
+      }
+
+      episodeSelect.addEventListener("change", () => {
+        state = freshState();
+        state.selectedEpisode = episodeSelect.value;
+        render();
+      });
+      startDraftButton.addEventListener("click", () => {
+        state.started = true;
+        render();
+      });
+      importMediaButton.addEventListener("click", () => {
+        state.mediaImported = true;
+        state.hostTrack = "Maya host camera";
+        state.guestTrack = "Jordan guest camera";
+        state.rolesConfirmed = false;
+        render();
+      });
+      confirmRolesButton.addEventListener("click", () => {
+        state.rolesConfirmed = true;
+        render();
+      });
+      continueStyleButton.addEventListener("click", () => {
+        state.readyToStyle = true;
+        render();
+      });
+      saveTemplateButton.addEventListener("click", () => {
+        state.templateSaved = true;
+        render();
+      });
+      resetSampleButton.addEventListener("click", () => {
+        state = freshState();
+        render();
+      });
+
+      render();
+    </script>
+  </body>
+</html>
