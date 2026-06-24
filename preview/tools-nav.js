@@ -14,7 +14,6 @@ const TOOL_STAGE = {
   "speaker-visual-match.html": "Bring in the recording",
   "speaker-eye-line-coherence.html": "Bring in the recording",
   "guest-profile-reuse.html": "Bring in the recording",
-  "social-context-intake.html": "Bring in the recording",
   "preset-style-picker.html": "Choose a visual direction",
   "preset-comparison-preview.html": "Choose a visual direction",
   "layout-safe-areas.html": "Choose a visual direction",
