@@ -275,7 +275,10 @@
         episodeSelect.value = state.selectedEpisode;
       }
 
-      function resetProgressAfterCarryChange() {
+      function resetProgressAfterCarryChange(id) {
+        if (id === "roles") {
+          state.rolesConfirmed = false;
+        }
         if (state.readyToStyle || state.templateSaved) {
           state.readyToStyle = false;
           state.templateSaved = false;
@@ -292,7 +295,7 @@
             checkbox.checked = state.carry[id];
             checkbox.addEventListener("change", () => {
               state.carry[id] = checkbox.checked;
-              resetProgressAfterCarryChange();
+              resetProgressAfterCarryChange(id);
               render();
             });
             const copy = document.createElement("div");
@@ -303,9 +306,24 @@
         );
       }
 
+      function roleSlotLabel(role) {
+        if (state.carry.roles || state.rolesConfirmed) return role;
+        return role === "Host" ? "Speaker 1" : "Speaker 2";
+      }
+
+      function roleSlotDetail(role) {
+        if (state.carry.roles || state.rolesConfirmed) {
+          return role === "Host"
+            ? "Reused host bucket waits for the new host recording."
+            : "Previous guest is cleared; choose the new guest recording.";
+        }
+
+        return "Role bucket is rebuilt for this episode; confirm the speaker role before styling.";
+      }
+
       function renderTrackSelect(role, value) {
         const label = document.createElement("label");
-        label.textContent = `${role} recording`;
+        label.textContent = `${roleSlotLabel(role)} recording`;
         const select = document.createElement("select");
         select.disabled = !state.mediaImported;
         newRecordings[role.toLowerCase()].forEach((recording) => {
@@ -341,18 +359,18 @@
 
       function renderRoleList() {
         const cards = [
-          ["Host", state.hostTrack, "Reused host bucket waits for the new host recording."],
-          ["Guest", state.guestTrack, "Previous guest is cleared; choose the new guest recording."],
-        ].map(([role, value, detail]) => {
+          ["Host", state.hostTrack],
+          ["Guest", state.guestTrack],
+        ].map(([role, value]) => {
           const card = document.createElement("article");
           card.className = "role-card";
           const head = document.createElement("div");
           head.className = "role-head";
           head.append(
-            createText("strong", role),
+            createText("strong", roleSlotLabel(role)),
             createText("span", value === "Choose recording" ? "needs recording" : state.rolesConfirmed ? "confirmed" : "needs confirm", `badge ${state.rolesConfirmed ? "ready" : "review"}`),
           );
-          card.append(head, createText("span", detail), renderTrackSelect(role, value));
+          card.append(head, createText("span", roleSlotDetail(role)), renderTrackSelect(role, value));
           return card;
         });
         roleList.replaceChildren(...cards);
@@ -370,7 +388,10 @@
           createText("div", "", hostReady ? "speaker ready" : "speaker"),
           createText("div", "", guestReady ? "speaker guest ready" : "speaker guest"),
         );
-        const lower = createText("div", hostReady && guestReady ? "New episode roles" : "Empty speaker buckets", "lower-third");
+        const lowerText = hostReady && guestReady
+          ? (state.carry.roles || state.rolesConfirmed ? "New episode roles" : "Rebuild speaker roles")
+          : (state.carry.roles ? "Empty speaker buckets" : "New speaker slots");
+        const lower = createText("div", lowerText, "lower-third");
         const title = createText("div", state.started ? "Previous guest and topic cleared for the next episode" : "Choose a recent episode to start", "title-card");
         previewFrame.replaceChildren(templateChip, stateChip, layout, lower, title);
       }
@@ -420,10 +441,13 @@
 
       function renderDraftList() {
         const episode = currentEpisode();
+        const speakerBucketCopy = state.carry.roles
+          ? state.mediaImported ? "New recordings are available for Host and Guest." : "Buckets are empty until new recordings are imported."
+          : state.rolesConfirmed ? "Speaker 1 and Speaker 2 are confirmed as Host and Guest for this draft." : "Host and Guest buckets are not carried; assign the new speaker slots before styling.";
         const items = [
           ["Reusable style", state.started ? `${episode.style} carried into the draft.` : "Waiting for starter choice."],
           ["Cleared by default", `${episode.previousGuest}, ${episode.previousTopic}, previous recordings, and one-off moments are not copied.`],
-          ["Speaker buckets", state.mediaImported ? "New recordings are available for Host and Guest." : "Buckets are empty until new recordings are imported."],
+          ["Speaker buckets", speakerBucketCopy],
           ["Template boundary", state.templateSaved ? "Reusable refinements saved for future episodes." : "No template changes have been saved."],
         ].map(([title, detail]) => {
           const card = document.createElement("article");
