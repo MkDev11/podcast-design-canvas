@@ -10,6 +10,7 @@ class Element {
     this.listeners = {};
     this.disabled = false;
     this.href = "";
+    this.target = "";
     this.type = "";
     this._text = "";
     this.className = "";
@@ -46,6 +47,9 @@ class Element {
     delete this.attributes[name];
     if (name === "href") {
       this.href = "";
+    }
+    if (name === "target") {
+      this.target = "";
     }
   }
 
@@ -99,6 +103,26 @@ const nextEpisodeSurface = "start-from-previous-episode.html";
 
 vm.runInNewContext(script, sandbox);
 
+function runHandoffWithWindow(windowValue) {
+  const harnessElements = Object.fromEntries(ids.map((id) => [id, new Element("div")]));
+  ["downloadPackage", "copyMetadata", "createReviewCopy", "startNextEpisode"].forEach((id) => {
+    harnessElements[id].tagName = id === "startNextEpisode" ? "a" : "button";
+  });
+  const harnessDocument = {
+    querySelector(selector) {
+      const id = selector.replace("#", "");
+      assert(harnessElements[id], `Unexpected selector: ${selector}`);
+      return harnessElements[id];
+    },
+    createElement(tagName) {
+      return new Element(tagName);
+    },
+  };
+  const harnessSandbox = { document: harnessDocument, module: { exports: {} }, window: windowValue };
+  vm.runInNewContext(script, harnessSandbox);
+  return { elements: harnessElements, exports: harnessSandbox.module.exports };
+}
+
 function destinationButton(label) {
   const button = elements.destinations.children.find((child) => child.textContent === label);
   assert(button, `Missing destination button: ${label}`);
@@ -138,12 +162,24 @@ assert.ok(
   "export package handoff updates the next episode link from package state",
 );
 assert.ok(
-  html.includes("nextEpisodeLink.href = nextEpisodeSurface"),
-  "ready next episode action links to the starter screen",
+  html.includes("function nextEpisodeHandoffHref()"),
+  "export package handoff resolves standalone and embedded next episode routes",
+);
+assert.ok(
+  html.includes("nextEpisodeLink.href = nextEpisodeHandoffHref()"),
+  "ready next episode action links through the route helper",
+);
+assert.ok(
+  html.includes('nextEpisodeLink.target = "_top"'),
+  "embedded next episode action targets the parent preview app",
 );
 assert.ok(
   html.includes('nextEpisodeLink.removeAttribute("href")'),
   "blocked next episode action removes navigation",
+);
+assert.ok(
+  html.includes('nextEpisodeLink.removeAttribute("target")'),
+  "blocked next episode action clears embedded navigation target",
 );
 assert.ok(
   html.includes('nextEpisodeLink.setAttribute("aria-disabled", String(blocked))'),
@@ -155,6 +191,7 @@ assert.match(noteText(), /Package ready/);
 assert.strictEqual(elements.createReviewCopy.disabled, false);
 assert.strictEqual(elements.startNextEpisode.attributes["aria-disabled"], "false");
 assert.strictEqual(elements.startNextEpisode.href, nextEpisodeSurface);
+assert.strictEqual(elements.startNextEpisode.target, "");
 
 elements.downloadPackage.click();
 assert.match(noteText(), /Package download prepared/);
@@ -182,6 +219,7 @@ assert.strictEqual(elements.downloadPackage.disabled, true);
 assert.strictEqual(elements.createReviewCopy.disabled, true);
 assert.strictEqual(elements.startNextEpisode.attributes["aria-disabled"], "true");
 assert.strictEqual(elements.startNextEpisode.href, "");
+assert.strictEqual(elements.startNextEpisode.target, "");
 assert.match(noteText(), /Resolve required item first/);
 
 elements.downloadPackage.click();
@@ -200,3 +238,26 @@ assert.strictEqual(elements.createReviewCopy.disabled, false);
 assert.strictEqual(elements.startNextEpisode.attributes["aria-disabled"], "false");
 assert.strictEqual(elements.startNextEpisode.href, nextEpisodeSurface);
 assert.match(noteText(), /Package ready/);
+
+const embeddedWindow = {
+  location: { pathname: "/prototype/export-package-handoff.html" },
+};
+embeddedWindow.self = {};
+embeddedWindow.top = { location: { pathname: "/preview/app.html" } };
+const embedded = runHandoffWithWindow(embeddedWindow);
+assert.strictEqual(
+  embedded.elements.startNextEpisode.href,
+  "../preview/app.html#start-from-previous-episode",
+  "embedded next episode action opens through the parent preview app",
+);
+assert.strictEqual(embedded.elements.startNextEpisode.target, "_top");
+assert.strictEqual(embedded.exports.nextEpisodeHandoffHref(), "../preview/app.html#start-from-previous-episode");
+
+const embeddedReviewButton = embedded.elements.destinations.children.find(
+  (child) => child.textContent === "Client review copy",
+);
+assert(embeddedReviewButton, "embedded harness renders the client review destination");
+embeddedReviewButton.click();
+assert.strictEqual(embedded.elements.startNextEpisode.attributes["aria-disabled"], "true");
+assert.strictEqual(embedded.elements.startNextEpisode.href, "");
+assert.strictEqual(embedded.elements.startNextEpisode.target, "");

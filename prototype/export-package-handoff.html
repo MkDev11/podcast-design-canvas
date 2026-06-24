@@ -253,6 +253,29 @@
         return destination.meta.find(([label]) => label === "Template")?.[1] || "Selected template";
       }
 
+      function screenIdFromFile(file) {
+        const clean = (file || "").split("#")[0].split("?")[0];
+        const name = clean.split("/").pop() || "";
+        return name.replace(/\.html$/, "");
+      }
+
+      function isEmbeddedInPreviewApp() {
+        try {
+          return typeof window !== "undefined" &&
+            window.self !== window.top &&
+            /\/preview\/app\.html$/.test(window.top.location.pathname);
+        } catch (_) {
+          return false;
+        }
+      }
+
+      function nextEpisodeHandoffHref() {
+        if (isEmbeddedInPreviewApp()) {
+          return `../preview/app.html#${screenIdFromFile(nextEpisodeSurface)}`;
+        }
+        return nextEpisodeSurface;
+      }
+
       function actionMessage(action, destination) {
         const blocked = destinationHasRequiredBlock(destination);
         const completeCount = completePackageCount(destination);
@@ -333,8 +356,14 @@
 
         if (blocked) {
           nextEpisodeLink.removeAttribute("href");
+          nextEpisodeLink.removeAttribute("target");
         } else {
-          nextEpisodeLink.href = nextEpisodeSurface;
+          nextEpisodeLink.href = nextEpisodeHandoffHref();
+          if (isEmbeddedInPreviewApp()) {
+            nextEpisodeLink.target = "_top";
+          } else {
+            nextEpisodeLink.removeAttribute("target");
+          }
         }
       }
 
@@ -420,6 +449,9 @@
           destinationTemplate,
           actionMessage,
           packageStatusText,
+          screenIdFromFile,
+          isEmbeddedInPreviewApp,
+          nextEpisodeHandoffHref,
         };
       }
     </script>
