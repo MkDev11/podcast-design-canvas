@@ -659,11 +659,14 @@
         render();
       }
 
-      function jumpTo(time) {
+      function seekToMoment(time) {
         review.position = Math.max(0, Math.min(DURATION, time));
         review.started = true;
         review.done = false;
-        review.changedAfterPass = false;
+      }
+
+      function jumpTo(time) {
+        seekToMoment(time);
         render();
       }
 
@@ -692,10 +695,7 @@
 
       function openMarker(marker) {
         activeHandoff = { id: marker.id, time: marker.time, owner: marker.owner, note: marker.note };
-        review.position = marker.time;
-        review.started = true;
-        review.done = false;
-        review.changedAfterPass = false;
+        seekToMoment(marker.time);
         render();
       }
 
