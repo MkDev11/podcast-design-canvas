@@ -288,6 +288,24 @@
         margin: 14px 0 0;
       }
 
+      .intake-request {
+        border: 1px solid #b8ddd4;
+        border-radius: 8px;
+        background: #f3fbf8;
+        padding: 12px;
+        margin: 0 0 14px;
+      }
+
+      .intake-request strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      .intake-request span {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
       @media (max-width: 840px) {
         .workspace {
           grid-template-columns: 1fr;
@@ -306,6 +324,7 @@
         }
       }
     </style>
+      <script src="broll-context-scorer.js"></script>
       <script src="../preview/ingest-nav.js" defer></script>
   </head>
   <body data-ingest-step="social-context-intake">
@@ -316,6 +335,7 @@
       <section class="workspace" aria-label="Social context intake workspace">
         <div class="panel">
           <h2>People &amp; links</h2>
+          <div class="intake-request" id="contextRequest" hidden></div>
           <div class="links" id="links"></div>
           <div class="actions">
             <button type="button" id="addLink">Add a link</button>
@@ -386,11 +406,13 @@
         { id: "k3", handle: "priya.codes", platform: "instagram", bucket: "", visibility: "screen" },
       ];
 
-      let links = structuredClone(sampleLinks);
+      const incomingBrollContext = parseIncomingBrollContext();
+      let links = initialLinks();
 
       const linksElement = document.querySelector("#links");
       const statusElement = document.querySelector("#status");
       const issuesElement = document.querySelector("#issues");
+      const contextRequestElement = document.querySelector("#contextRequest");
 
       document.querySelector("#addLink").addEventListener("click", () => {
         const next = links.length + 1;
@@ -399,9 +421,40 @@
       });
 
       document.querySelector("#reset").addEventListener("click", () => {
-        links = structuredClone(sampleLinks);
+        links = initialLinks();
         render();
       });
+
+      function parseIncomingBrollContext() {
+        if (!window.BrollContextScorer) {
+          return null;
+        }
+        return window.BrollContextScorer.parseIntakeQuery(window.location.search);
+      }
+
+      function seedIncomingBrollLink(payload) {
+        if (!payload) {
+          return null;
+        }
+        const at = payload.at ? ` at ${payload.at}` : "";
+        const moment = payload.moment || "B-roll moment";
+        return {
+          id: "from-broll-context",
+          handle: `Source for ${moment}${at}`,
+          platform: "website",
+          bucket: "",
+          visibility: "screen",
+        };
+      }
+
+      function initialLinks() {
+        const list = structuredClone(sampleLinks);
+        const seeded = seedIncomingBrollLink(incomingBrollContext);
+        if (seeded) {
+          list.unshift(seeded);
+        }
+        return list;
+      }
 
       // Single source of truth: map each link's speaker bucket + visibility to a state and
       // a plain-language issue. A link that is not attached to a speaker is the one thing
@@ -443,10 +496,28 @@
       // a caret, so replacing them is safe).
       function render() {
         const evaluation = evaluate(links);
+        renderIncomingRequest(incomingBrollContext);
         linksElement.replaceChildren(
           ...links.map((link, index) => renderLink(link, index, evaluation.results[index])),
         );
         updateSummary(evaluation);
+      }
+
+      function renderIncomingRequest(payload) {
+        contextRequestElement.replaceChildren();
+        contextRequestElement.hidden = !payload;
+        if (!payload) {
+          return;
+        }
+        const strong = document.createElement("strong");
+        strong.textContent = payload.at
+          ? `B-roll context request at ${payload.at}`
+          : "B-roll context request";
+        const span = document.createElement("span");
+        const reason = payload.reason ? `${payload.reason}. ` : "";
+        const moment = payload.moment ? `Add a source for "${payload.moment}" and assign it to the right speaker.` : "Add a source and assign it to the right speaker.";
+        span.textContent = `${reason}${moment}`;
+        contextRequestElement.append(strong, span);
       }
 
       function updateSummary(evaluation) {

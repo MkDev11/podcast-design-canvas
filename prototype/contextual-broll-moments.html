@@ -351,6 +351,7 @@
       </section>
     </main>
 
+    <script src="broll-context-scorer.js"></script>
     <script>
       // The kinds of visual treatment a moment can use.
       const types = {
@@ -370,13 +371,13 @@
         prominent: "Prominent",
       };
 
-      // Where the suggestion came from. "weak" sources are low-confidence context that
-      // the spec says to confirm before it appears on screen.
+      // Where the suggestion came from. Context strength is scored from the transcript,
+      // so this stays a plain source label instead of a manual review flag.
       const sources = {
-        manual: { label: "I added this", weak: false },
-        transcript: { label: "From a transcript topic", weak: false },
-        social: { label: "From approved social context", weak: false },
-        reference: { label: "From a low-confidence reference", weak: true },
+        manual: { label: "I added this", needsContextCheck: false },
+        transcript: { label: "From a transcript topic", needsContextCheck: true },
+        social: { label: "From approved social context", needsContextCheck: false },
+        reference: { label: "From an unconfirmed reference", needsContextCheck: true },
       };
 
       // The creator's decision on a suggested moment.
@@ -387,11 +388,49 @@
         rejected: "Reject",
       };
 
+      const APPROVED_SPEAKERS = ["Dana Brooks", "Marcus Lee", "Priya Shah"];
+
       const sampleMoments = [
-        { id: "m1", reason: "Guest mentions the product launch", type: "product", strength: "standard", source: "transcript", decision: "approved" },
-        { id: "m2", reason: "Host introduces a new segment", type: "title", strength: "standard", source: "transcript", decision: "suggested" },
-        { id: "m3", reason: "Guest names their company", type: "web", strength: "prominent", source: "reference", decision: "suggested" },
-        { id: "m4", reason: "Quotable line from the host", type: "quote", strength: "subtle", source: "manual", decision: "approved" },
+        {
+          id: "m1",
+          at: "00:12:42",
+          reason: "Guest mentions the product launch",
+          transcript: "Marcus Lee explains how Acme Studio launched Pulse Kit for 12 customer teams in April.",
+          type: "product",
+          strength: "standard",
+          source: "transcript",
+          decision: "approved",
+        },
+        {
+          id: "m2",
+          at: "00:28:17",
+          reason: "Host introduces a new segment",
+          transcript: "Now we get into the next part of the episode and talk about what happened next.",
+          type: "title",
+          strength: "standard",
+          source: "transcript",
+          decision: "suggested",
+        },
+        {
+          id: "m3",
+          at: "00:33:05",
+          reason: "Guest names their company",
+          transcript: "Priya Shah says her team at Northstar Labs publishes examples on the company site.",
+          type: "web",
+          strength: "prominent",
+          source: "reference",
+          decision: "suggested",
+        },
+        {
+          id: "m4",
+          at: "00:41:26",
+          reason: "Quotable line from the host",
+          transcript: "Dana Brooks says, the best edit feels prepared without feeling stiff.",
+          type: "quote",
+          strength: "subtle",
+          source: "manual",
+          decision: "approved",
+        },
       ];
 
       let moments = structuredClone(sampleMoments);
@@ -402,7 +441,16 @@
 
       document.querySelector("#addMoment").addEventListener("click", () => {
         const next = moments.length + 1;
-        moments.push({ id: `m${next}-${moments.length}`, reason: "New visual moment", type: "broll", strength: "standard", source: "manual", decision: "suggested" });
+        moments.push({
+          id: `m${next}-${moments.length}`,
+          at: "",
+          reason: "New visual moment",
+          transcript: "New visual moment",
+          type: "broll",
+          strength: "standard",
+          source: "manual",
+          decision: "suggested",
+        });
         render();
       });
 
@@ -411,24 +459,14 @@
         render();
       });
 
-      const isLive = (decision) => decision === "approved" || decision === "adjusted";
-
       // Single source of truth: map each moment's decision + source, plus the restraint
       // rule about back-to-back repeats, into one review state and a creator-facing issue.
       function evaluate(list) {
-        // A visual that repeats the same treatment immediately after another live one
-        // breaks the "don't make a long episode visually noisy" rule, so the second
-        // one asks for a second look.
-        const repeats = list.map((moment, index) => {
-          if (!isLive(moment.decision) || index === 0) {
-            return false;
-          }
-          const prev = list[index - 1];
-          return isLive(prev.decision) && prev.type === moment.type;
-        });
+        const titleRepeats = BrollContextScorer.detectTitleRepeats(list);
 
         const results = list.map((moment, index) => {
           const source = sources[moment.source] || sources.manual;
+          const analysis = BrollContextScorer.scoreMoment(moment, { approvedSpeakers: APPROVED_SPEAKERS });
           let state;
           let issue = null;
 
@@ -439,24 +477,24 @@
               action: "Rejected — it stays out of the export and won't be suggested again this episode.",
               tone: "info",
             };
-          } else if (repeats[index]) {
+          } else if (titleRepeats[index]) {
             state = "review";
             issue = {
-              title: "Two of the same visual back to back",
-              action: `${types[moment.type]} repeats right after the previous moment. Space them out or change one so the episode doesn't feel busy.`,
+              title: "Two title cards back to back",
+              action: "Space them out or change one into a lighter visual so the episode does not feel busy.",
               tone: "review",
-              ...(moment.type === "title"
-                ? { fixScreen: "contextual-title-cards.html", fixLabel: "title cards" }
-                : {}),
+              fixScreen: "contextual-title-cards.html",
+              fixLabel: "title cards",
             };
-          } else if (moment.decision === "suggested" && source.weak) {
+          } else if (moment.decision === "suggested" && source.needsContextCheck && analysis.needsReview) {
             state = "review";
             issue = {
-              title: `Check the context for "${moment.reason}"`,
-              action: "This came from low-confidence context. Confirm it fits before it appears on screen, or reject it.",
+              title: `Add context for "${moment.reason}"`,
+              action: `${analysis.reasonLabel}. ${analysis.guidance}`,
               tone: "review",
               fixScreen: "social-context-intake.html",
               fixLabel: "social context intake",
+              fixPayload: BrollContextScorer.buildIntakePayload(moment, analysis),
             };
           } else if (moment.decision === "adjusted") {
             state = "approved";
@@ -630,7 +668,9 @@
         if (issue.fixScreen) {
           const openLink = document.createElement("a");
           openLink.className = "fix-link";
-          openLink.href = issue.fixScreen;
+          openLink.href = issue.fixPayload
+            ? `${issue.fixScreen}${BrollContextScorer.encodeIntakeQuery(issue.fixPayload)}`
+            : issue.fixScreen;
           openLink.textContent = `Open ${issue.fixLabel} →`;
           article.append(openLink);
         }
