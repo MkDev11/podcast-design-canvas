@@ -14,6 +14,7 @@ const EPISODE_FLOW = [
 
 const EPISODE_SHELL_PREFIX = 2;
 const EPISODE_PREAMBLE = { file: "speaker-role-mapping.html", label: "Speaker roles" };
+const EPISODE_HANDOFF = { file: "episode-watch-through-preview.html", label: "Watch-through preview" };
 
 function currentStepIndex() {
   const name = window.location.pathname.split("/").pop() || "";
@@ -116,6 +117,11 @@ function renderEpisodeFlowNav() {
     nextLink.href = next.file;
     nextLink.textContent = `Next: ${next.label}`;
     wrap.appendChild(nextLink);
+  } else {
+    const handoff = document.createElement("a");
+    handoff.href = EPISODE_HANDOFF.file;
+    handoff.textContent = `Continue: ${EPISODE_HANDOFF.label}`;
+    wrap.appendChild(handoff);
   }
 
   const stepLabel = document.createElement("span");

@@ -145,6 +145,10 @@ assert.ok(
   !lastNav.nodes.some((node) => node.textContent.startsWith("Next:")),
   "last flow screen does not render a next link",
 );
+assert.ok(
+  lastNav.nodes.some((node) => node.textContent === "Continue: Watch-through preview"),
+  "last flow screen hands off to the connected publish path",
+);
 
 const duplicateNav = renderNavFor("speaker-sync-repair.html");
 vm.runInNewContext(navSource, {
