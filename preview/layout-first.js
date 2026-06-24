@@ -566,6 +566,7 @@
       });
       wrap.addEventListener("dragend", () => {
         draggingFromSlot = null;
+        clearDragAffordances();
       });
 
       const video = doc.createElement("video");
@@ -864,6 +865,24 @@
       });
     });
 
+    // Drop-target highlights are tracked per slot/canvas with enter/leave depth. Clear them all
+    // when a placed-video drag ends without landing on a slot — otherwise a destination that was
+    // highlighted mid-drag keeps glowing after a cancel or canvas-gap drop (#1246).
+    function clearDragAffordances() {
+      zones.forEach((candidate) => {
+        candidate._pdcDragDepth = 0;
+        if (candidate.classList) {
+          candidate.classList.remove("drag-over");
+        }
+      });
+      if (layoutCanvas) {
+        layoutCanvas._pdcCanvasDragDepth = 0;
+        if (layoutCanvas.classList) {
+          layoutCanvas.classList.remove("drag-over");
+        }
+      }
+    }
+
     zones.forEach((zone) => {
       const input = zone.querySelector("[data-file-input]");
       // Make the whole slot a click target for choosing a video, so a creator can place or
@@ -889,14 +908,14 @@
       // the status badge, the file input), so adding on dragover and removing on every
       // dragleave makes the highlight flicker as the pointer moves across the slot. Track
       // enter/leave depth and only clear the highlight once the cursor has truly left the slot.
-      let dragDepth = 0;
+      zone._pdcDragDepth = 0;
       zone.addEventListener("dragenter", () => {
         // During a placed-video move (#1233), only destination slots should highlight — not the
         // slot the recording is being dragged from (#1244 fixed the canvas; this fixes the slot).
         if (draggingFromSlot && draggingFromSlot === zone.dataset.slot) {
           return;
         }
-        dragDepth += 1;
+        zone._pdcDragDepth += 1;
         zone.classList.add("drag-over");
       });
       zone.addEventListener("dragover", (event) => {
@@ -904,8 +923,8 @@
         event.preventDefault();
       });
       zone.addEventListener("dragleave", () => {
-        dragDepth = Math.max(0, dragDepth - 1);
-        if (dragDepth === 0) {
+        zone._pdcDragDepth = Math.max(0, zone._pdcDragDepth - 1);
+        if (zone._pdcDragDepth === 0) {
           zone.classList.remove("drag-over");
         }
       });
@@ -914,7 +933,7 @@
         // A drop aimed at a specific slot is owned by that slot — stop it from also
         // bubbling to the layout-wide drop handler, which would re-route the files.
         event.stopPropagation();
-        dragDepth = 0;
+        zone._pdcDragDepth = 0;
         zone.classList.remove("drag-over");
         const internalSlot = draggingFromSlot
           || (event.dataTransfer && typeof event.dataTransfer.getData === "function"
@@ -941,7 +960,7 @@
       // routes to the next open slot (#1216), but without a cue the creator can't tell the
       // layout — not only the small slots — accepts a drop. Track enter/leave depth so crossing
       // the slots inside the canvas doesn't flicker the highlight, mirroring the per-slot cue.
-      let canvasDragDepth = 0;
+      layoutCanvas._pdcCanvasDragDepth = 0;
       layoutCanvas.addEventListener("dragenter", () => {
         // The canvas affordance is for external file drops (#1216 / #1237). A placed video being
         // dragged between slots (#1233) must not light up the whole layout as if new files belong
@@ -949,15 +968,15 @@
         if (draggingFromSlot) {
           return;
         }
-        canvasDragDepth += 1;
+        layoutCanvas._pdcCanvasDragDepth += 1;
         layoutCanvas.classList.add("drag-over");
       });
       layoutCanvas.addEventListener("dragover", (event) => {
         event.preventDefault();
       });
       layoutCanvas.addEventListener("dragleave", () => {
-        canvasDragDepth = Math.max(0, canvasDragDepth - 1);
-        if (canvasDragDepth === 0) {
+        layoutCanvas._pdcCanvasDragDepth = Math.max(0, layoutCanvas._pdcCanvasDragDepth - 1);
+        if (layoutCanvas._pdcCanvasDragDepth === 0) {
           layoutCanvas.classList.remove("drag-over");
         }
       });
@@ -968,11 +987,12 @@
         if (typeof event.stopPropagation === "function") {
           event.stopPropagation();
         }
-        canvasDragDepth = 0;
+        layoutCanvas._pdcCanvasDragDepth = 0;
         layoutCanvas.classList.remove("drag-over");
         // A placed-video dragged between slots is handled by the target slot; the canvas-wide
         // handler only routes real file drops to the next empty slot.
         if (draggingFromSlot) {
+          clearDragAffordances();
           draggingFromSlot = null;
           return;
         }
@@ -994,6 +1014,7 @@
       doc.addEventListener("drop", (event) => {
         event.preventDefault();
         if (draggingFromSlot) {
+          clearDragAffordances();
           draggingFromSlot = null;
           return;
         }
