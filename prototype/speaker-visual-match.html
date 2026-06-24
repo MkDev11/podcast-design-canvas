@@ -158,6 +158,22 @@
       .issue.limit { border-left-color: var(--limit); }
       .issue.route { border-left-color: var(--info); }
 
+      .issue .fix-link {
+        display: inline-block;
+        margin-top: 8px;
+        color: var(--accent);
+        font-weight: 700;
+        font-size: 13px;
+        text-decoration: none;
+      }
+
+      .issue .fix-link:hover,
+      .issue .fix-link:focus-visible {
+        text-decoration: underline;
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
       .continue-link {
         display: inline-flex;
         align-items: center;
@@ -235,6 +251,7 @@
 
     <script>
       const nextVisualSurface = "preset-style-picker.html";
+      const presetComparisonSurface = "preset-comparison-preview.html";
       const presets = {
         studio: {
           label: "Split Studio",
@@ -479,26 +496,59 @@
         const guest = currentAdjustment();
         const issues = [];
         if (state.guestState === "needs review") {
-          issues.push(["route", "Review only this mismatched track", "The automatic match is previewed because the guest would look noticeably different in the selected preset."]);
+          issues.push(guestReviewIssue());
         } else if (state.guestState === "skipped") {
-          issues.push(["ready", "Matching skipped for this episode", "Preset setup will keep the imported guest frame and show the difference in preview."]);
+          issues.push(issueRecord("ready", "Matching skipped for this episode", "Preset setup will keep the imported guest frame and show the difference in preview."));
         } else {
-          issues.push(["ready", "Speaker match settled", "The selected preset now previews Host and Guest with the chosen match decision."]);
+          issues.push(issueRecord("ready", "Speaker match settled", "The selected preset now previews Host and Guest with the chosen match decision."));
         }
         if (state.guestState === "matched" && (guest.strength === "heavy" || guest.strength === "at the limit")) {
-          issues.push(["limit", "Check that the guest still looks natural", guest.note]);
+          issues.push(issueRecord("limit", "Check that the guest still looks natural", guest.note));
         }
         if (presetHandoffReady()) {
-          issues.push(["ready", "Preset setup ready", "Open preset styling to continue with this speaker look."]);
+          issues.push(issueRecord("ready", "Preset setup ready", "Open preset styling to continue with this speaker look."));
         }
         issuesElement.replaceChildren(
-          ...issues.map(([tone, title, detail]) => {
-            const issue = document.createElement("article");
-            issue.className = `issue ${tone}`;
-            issue.append(createText("strong", title), createText("span", detail));
-            return issue;
-          }),
+          ...issues.map(renderIssue),
         );
+      }
+
+      function guestReviewIssue() {
+        return {
+          ...issueRecord(
+            "route",
+            "Review this match beside the preset",
+            "The guest would look noticeably different beside the host, so compare the match in the preset preview before continuing.",
+          ),
+          fixScreen: presetComparisonSurface,
+          fixLabel: "preset comparison",
+        };
+      }
+
+      function issueRecord(tone, title, detail) {
+        return { tone, title, detail };
+      }
+
+      function renderIssue(issue) {
+        const article = document.createElement("article");
+        article.className = `issue ${issue.tone}`;
+        article.append(createText("strong", issue.title), createText("span", issue.detail));
+        const fixLink = renderIssueFixLink(issue);
+        if (fixLink) {
+          article.append(fixLink);
+        }
+        return article;
+      }
+
+      function renderIssueFixLink(issue) {
+        if (!issue.fixScreen || !issue.fixLabel) {
+          return null;
+        }
+        const openLink = document.createElement("a");
+        openLink.className = "fix-link";
+        openLink.href = issue.fixScreen;
+        openLink.textContent = `Open ${issue.fixLabel}`;
+        return openLink;
       }
 
       function updateContinueHandoff() {
