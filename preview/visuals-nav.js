@@ -11,6 +11,12 @@ const VISUALS_FLOW = [
   { id: "sensitive-moment-review", file: "sensitive-moment-review.html", label: "Sensitive moment review" },
 ];
 
+const PREVIEW_APP_VISUALS_TARGETS = new Set([
+  "on-screen-correction-note",
+  ...VISUALS_FLOW.map((step) => step.id),
+  "show-segment-system",
+]);
+
 function currentVisualsIndex() {
   const fromBody = document.body.dataset.visualsStep;
   if (fromBody) {
@@ -22,6 +28,41 @@ function currentVisualsIndex() {
 
   const name = window.location.pathname.split("/").pop() || "";
   return VISUALS_FLOW.findIndex((step) => step.file === name);
+}
+
+function screenIdFromFile(file) {
+  const clean = (file || "").split("#")[0].split("?")[0];
+  const name = clean.split("/").pop() || "";
+  return name.replace(/\.html$/, "");
+}
+
+function isPreviewAppVisualsTarget(file) {
+  return PREVIEW_APP_VISUALS_TARGETS.has(screenIdFromFile(file));
+}
+
+function isEmbeddedInPreviewApp() {
+  try {
+    return window.self !== window.top && /\/preview\/app\.html$/.test(window.top.location.pathname);
+  } catch (_) {
+    return false;
+  }
+}
+
+function previewAppHref(file) {
+  return `../preview/app.html#${screenIdFromFile(file)}`;
+}
+
+function setTopTargetWhenEmbedded(link) {
+  if (isEmbeddedInPreviewApp()) {
+    link.target = "_top";
+  }
+}
+
+function setVisualsScreenLink(link, file) {
+  if (isEmbeddedInPreviewApp() && isPreviewAppVisualsTarget(file)) {
+    link.href = previewAppHref(file);
+    link.target = "_top";
+  }
 }
 
 function renderVisualsNav() {
@@ -102,11 +143,13 @@ function renderVisualsNav() {
 
   const home = document.createElement("a");
   home.href = "../preview/";
+  setTopTargetWhenEmbedded(home);
   home.textContent = "← Preview shell";
   wrap.appendChild(home);
 
   const guided = document.createElement("a");
   guided.href = "../preview/episode-flow.html";
+  setTopTargetWhenEmbedded(guided);
   guided.textContent = "Guided episode flow";
   wrap.appendChild(guided);
 
@@ -118,11 +161,13 @@ function renderVisualsNav() {
   if (previous) {
     const prevLink = document.createElement("a");
     prevLink.href = previous.file;
+    setVisualsScreenLink(prevLink, previous.file);
     prevLink.textContent = `Previous: ${previous.label}`;
     wrap.appendChild(prevLink);
   } else {
     const cleanup = document.createElement("a");
     cleanup.href = "on-screen-correction-note.html";
+    setVisualsScreenLink(cleanup, "on-screen-correction-note.html");
     cleanup.textContent = "Previous: On-screen correction note";
     wrap.appendChild(cleanup);
   }
@@ -130,11 +175,13 @@ function renderVisualsNav() {
   if (next) {
     const nextLink = document.createElement("a");
     nextLink.href = next.file;
+    setVisualsScreenLink(nextLink, next.file);
     nextLink.textContent = `Next: ${next.label}`;
     wrap.appendChild(nextLink);
   } else {
     const start = document.createElement("a");
     start.href = "show-segment-system.html";
+    setVisualsScreenLink(start, "show-segment-system.html");
     start.textContent = "Continue: Show segment system";
     wrap.appendChild(start);
   }
