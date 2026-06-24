@@ -1,0 +1,930 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Episode Watch-Through Preview Prototype</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #16211f;
+        --muted: #5e6b67;
+        --line: #d9e0dd;
+        --panel: #f7faf8;
+        --accent: #136f63;
+        --warn: #a15c00;
+        --block: #a52828;
+        --info: #2a4c8a;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: #ffffff;
+      }
+
+      main {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 32px 20px 48px;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        font-size: 32px;
+        line-height: 1.1;
+        margin-bottom: 8px;
+      }
+
+      h2 {
+        margin-bottom: 12px;
+      }
+
+      .lede {
+        color: var(--muted);
+        max-width: 780px;
+      }
+
+      .workspace {
+        display: grid;
+        grid-template-columns: minmax(0, 1.25fr) minmax(340px, 0.85fr);
+        gap: 24px;
+        margin-top: 28px;
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        padding: 18px;
+      }
+
+      .player {
+        display: grid;
+        gap: 14px;
+      }
+
+      .preview-frame {
+        position: relative;
+        overflow: hidden;
+        aspect-ratio: 16 / 9;
+        border: 1px solid #101816;
+        border-radius: 8px;
+        background:
+          linear-gradient(180deg, rgba(16, 24, 22, 0) 58%, rgba(16, 24, 22, 0.72)),
+          linear-gradient(135deg, #174f49, #2d5471 58%, #6d5d83);
+      }
+
+      .destination-chip,
+      .brand-chip,
+      .time-chip {
+        position: absolute;
+        z-index: 3;
+        border-radius: 999px;
+        background: rgba(246, 251, 249, 0.93);
+        color: #14211d;
+        font-size: 12px;
+        font-weight: 800;
+        padding: 6px 9px;
+      }
+
+      .destination-chip {
+        top: 16px;
+        left: 16px;
+      }
+
+      .brand-chip {
+        top: 16px;
+        right: 16px;
+      }
+
+      .time-chip {
+        left: 16px;
+        bottom: 16px;
+      }
+
+      .speaker-layout {
+        position: absolute;
+        inset: 14%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4%;
+      }
+
+      .speaker {
+        position: relative;
+        overflow: hidden;
+        border-radius: 8px;
+        background: linear-gradient(160deg, #7bc0b1, #1b5f56);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+      }
+
+      .speaker.secondary {
+        background: linear-gradient(160deg, #9faed3, #405074);
+      }
+
+      .speaker::before {
+        content: "";
+        position: absolute;
+        top: 18%;
+        left: 50%;
+        width: 24%;
+        aspect-ratio: 1;
+        transform: translateX(-50%);
+        border-radius: 50%;
+        background: #eef7f4;
+      }
+
+      .speaker::after {
+        content: "";
+        position: absolute;
+        right: 29%;
+        bottom: 12%;
+        left: 29%;
+        height: 32%;
+        border-radius: 999px 999px 0 0;
+        background: #dcefeb;
+      }
+
+      .lower-third {
+        position: absolute;
+        left: 10px;
+        bottom: 10px;
+        z-index: 2;
+        border-radius: 5px;
+        background: rgba(16, 24, 22, 0.8);
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 800;
+        padding: 5px 8px;
+      }
+
+      .visual-moment {
+        position: absolute;
+        top: 25%;
+        right: 9%;
+        z-index: 2;
+        width: 28%;
+        min-height: 22%;
+        display: grid;
+        align-content: center;
+        gap: 5px;
+        border-radius: 8px;
+        background: rgba(255, 245, 210, 0.95);
+        color: #392900;
+        box-shadow: 0 14px 34px rgba(16, 24, 22, 0.24);
+        padding: 12px;
+      }
+
+      .visual-moment strong {
+        font-size: 13px;
+      }
+
+      .visual-moment span {
+        color: #604400;
+        font-size: 12px;
+      }
+
+      .caption {
+        position: absolute;
+        right: 14%;
+        bottom: 14%;
+        left: 14%;
+        z-index: 3;
+        border-radius: 6px;
+        background: rgba(16, 24, 22, 0.86);
+        color: #ffffff;
+        font-weight: 800;
+        line-height: 1.35;
+        padding: 9px 12px;
+        text-align: center;
+      }
+
+      .progress-wrap {
+        display: grid;
+        gap: 8px;
+      }
+
+      .progress-meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .progress {
+        overflow: hidden;
+        height: 12px;
+        border-radius: 999px;
+        background: #dfe7e3;
+      }
+
+      .progress span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #136f63, #2a7c9b);
+      }
+
+      .chapters,
+      .markers {
+        display: grid;
+        gap: 12px;
+      }
+
+      .chapter,
+      .marker,
+      .summary-card {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #ffffff;
+        padding: 12px;
+      }
+
+      .chapter strong,
+      .marker strong,
+      .summary-card strong {
+        display: block;
+      }
+
+      .chapter span,
+      .marker span,
+      .summary-card span {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .chapter {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .chapter-time {
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .marker {
+        display: grid;
+        gap: 10px;
+      }
+
+      .handoff {
+        display: grid;
+        gap: 6px;
+        margin-top: 12px;
+        border: 1px solid #bfd4ef;
+        border-radius: 8px;
+        background: #f1f6ff;
+        padding: 12px;
+      }
+
+      .handoff strong {
+        color: var(--info);
+      }
+
+      .handoff span {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .marker-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: flex-start;
+      }
+
+      .marker-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      label {
+        display: grid;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      select {
+        width: 100%;
+        border: 1px solid #bfcbc7;
+        border-radius: 6px;
+        background: #ffffff;
+        color: var(--ink);
+        font: inherit;
+        padding: 8px 10px;
+      }
+
+      select {
+        min-height: 40px;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      button {
+        min-height: 40px;
+        border: 1px solid #0f5d53;
+        border-radius: 6px;
+        background: var(--accent);
+        color: #ffffff;
+        font: inherit;
+        font-weight: 800;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+
+      button.secondary {
+        background: #ffffff;
+        color: var(--accent);
+      }
+
+      button.mini {
+        min-height: 34px;
+        padding: 6px 10px;
+        font-size: 13px;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
+        border-radius: 999px;
+        padding: 0 12px;
+        font-weight: 800;
+      }
+
+      .status.not-watched,
+      .status.in-progress {
+        color: #7a4400;
+        background: #fff1d6;
+      }
+
+      .status.watched-good {
+        color: #075246;
+        background: #dff5ef;
+      }
+
+      .status.watched-notes {
+        color: #244b82;
+        background: #e2ecff;
+      }
+
+      .status.stale {
+        color: #8b1e1e;
+        background: #ffe0e0;
+      }
+
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .summary-card {
+        min-height: 82px;
+      }
+
+      .summary-card strong {
+        font-size: 22px;
+        line-height: 1.1;
+        margin-bottom: 4px;
+      }
+
+      .summary-note {
+        color: var(--muted);
+        font-size: 13px;
+        margin: 14px 0 0;
+      }
+
+      .empty {
+        color: var(--muted);
+        background: #ffffff;
+        border: 1px dashed #bfcbc7;
+        border-radius: 8px;
+        padding: 12px;
+      }
+
+      @media (max-width: 900px) {
+        .workspace {
+          grid-template-columns: 1fr;
+        }
+
+        .summary-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      @media (max-width: 620px) {
+        main {
+          padding-inline: 14px;
+        }
+
+        .summary-grid,
+        .speaker-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .preview-frame {
+          aspect-ratio: 4 / 3;
+        }
+
+        .chapter {
+          grid-template-columns: 1fr;
+          align-items: start;
+        }
+
+        .visual-moment {
+          top: 20%;
+          right: 8%;
+          left: 8%;
+          width: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Episode watch-through preview</h1>
+      <p class="lede">Play the finished long-form episode as a viewer would, drop soft notes when something feels off, and keep a calm confidence signal before export.</p>
+
+      <section class="workspace" aria-label="Episode watch-through workspace">
+        <div class="panel player">
+          <h2>Finished episode</h2>
+          <label>Destination preview
+            <select id="destination"></select>
+          </label>
+          <div id="frame" class="preview-frame" aria-label="Finished episode frame"></div>
+          <div class="progress-wrap">
+            <div class="progress-meta">
+              <span id="position">0:00</span>
+              <span id="duration">1:04:00</span>
+            </div>
+            <div class="progress" aria-hidden="true"><span id="progress"></span></div>
+          </div>
+
+          <div class="actions" id="mainActions"></div>
+
+          <h2>Jump by chapter</h2>
+          <div id="chapters" class="chapters"></div>
+        </div>
+
+        <aside class="panel" aria-live="polite" aria-label="Watch-through confidence summary">
+          <h2>Watch-through confidence</h2>
+          <div id="status" class="status not-watched">Not watched yet</div>
+          <div id="summary" class="summary-grid"></div>
+
+          <h2>Soft notes</h2>
+          <div id="markers" class="markers"></div>
+          <div id="handoff"></div>
+
+          <p class="summary-note">Notes are reminders to revisit moments; they do not block export. Opening a note should take the creator to the review surface that owns the fix.</p>
+        </aside>
+      </section>
+    </main>
+
+    <script>
+      const DURATION = 3840;
+      const STEP = 720;
+
+      const destinations = {
+        youtube: { label: "YouTube full episode", frame: "16:9 public page" },
+        client: { label: "Client review copy", frame: "private review page" },
+        archive: { label: "Archive master", frame: "full-quality master" },
+      };
+
+      const ownerOptions = {
+        captions: "Caption review",
+        visuals: "Visual moment review",
+        audio: "Audio cleanup",
+        framing: "Speaker framing",
+      };
+
+      const chapters = [
+        { id: "intro", time: 0, title: "Cold open and guest setup", caption: "Today we are tracing how the studio changed over a year.", visual: "Opening title" },
+        { id: "remote", time: 640, title: "Remote workflow shift", caption: "The remote version finally made the weekly show possible.", visual: "B-roll: home studio" },
+        { id: "launch", time: 1420, title: "Launch story", caption: "That first public beta gave us a real signal from listeners.", visual: "Lower third: Launch story" },
+        { id: "sponsor", time: 2180, title: "Sponsor read and transition", caption: "We will keep this short and get back to the conversation.", visual: "Sponsor card" },
+        { id: "closing", time: 3080, title: "Lessons for the next season", caption: "The biggest lesson is to make the default edit feel calm.", visual: "Closing title" },
+      ];
+
+      let review = {
+        destination: "youtube",
+        position: 0,
+        started: false,
+        done: false,
+        changedAfterPass: false,
+        markers: [],
+      };
+
+      let markerId = 0;
+
+      const destinationElement = document.querySelector("#destination");
+      const frameElement = document.querySelector("#frame");
+      const positionElement = document.querySelector("#position");
+      const durationElement = document.querySelector("#duration");
+      const progressElement = document.querySelector("#progress");
+      const actionsElement = document.querySelector("#mainActions");
+      const chaptersElement = document.querySelector("#chapters");
+      const statusElement = document.querySelector("#status");
+      const summaryElement = document.querySelector("#summary");
+      const markersElement = document.querySelector("#markers");
+      const handoffElement = document.querySelector("#handoff");
+      let activeHandoff = null;
+
+      destinationElement.replaceChildren(
+        ...Object.entries(destinations).map(([id, destination]) => {
+          const option = document.createElement("option");
+          option.value = id;
+          option.textContent = destination.label;
+          option.selected = id === review.destination;
+          return option;
+        }),
+      );
+
+      destinationElement.addEventListener("change", (event) => {
+        review.destination = event.target.value;
+        if (review.done) {
+          review.changedAfterPass = true;
+        }
+        render();
+      });
+
+      function evaluate(state) {
+        const markerCount = state.markers.length;
+        let watchState = "not watched";
+        let message = "Start a calm pass when the current export version is ready to judge.";
+
+        if (state.changedAfterPass) {
+          watchState = "stale";
+          message = "The episode changed after the last pass, so watch this version again before relying on it.";
+        } else if (state.done && markerCount > 0) {
+          watchState = "watched, has notes";
+          message = "The pass is complete, with soft notes to revisit before publishing.";
+        } else if (state.done) {
+          watchState = "watched, looks good";
+          message = "The current export version has been watched through with no notes left open.";
+        } else if (state.started || state.position > 0) {
+          watchState = "in progress";
+          message = "Resume from the remembered point and keep watching without turning this into a warning queue.";
+        }
+
+        const progress = Math.min(100, Math.round((state.position / DURATION) * 100));
+        return { watchState, message, markerCount, progress };
+      }
+
+      function currentChapter() {
+        return chapters.reduce((current, chapter) => (chapter.time <= review.position ? chapter : current), chapters[0]);
+      }
+
+      function formatTime(seconds) {
+        const safe = Math.max(0, Math.min(DURATION, Math.round(seconds)));
+        const totalMinutes = Math.floor(safe / 60);
+        const s = String(safe % 60).padStart(2, "0");
+        if (totalMinutes >= 60) {
+          const h = Math.floor(totalMinutes / 60);
+          const m = String(totalMinutes % 60).padStart(2, "0");
+          return `${h}:${m}:${s}`;
+        }
+        return `${totalMinutes}:${s}`;
+      }
+
+      function startOrContinue() {
+        if (review.changedAfterPass) {
+          review.position = 0;
+        }
+        review.started = true;
+        review.changedAfterPass = false;
+        review.done = false;
+        review.position = Math.min(DURATION, Math.max(180, review.position + STEP));
+        if (review.position >= DURATION) {
+          review.done = true;
+        }
+        render();
+      }
+
+      function markDone() {
+        review.started = true;
+        review.done = true;
+        review.changedAfterPass = false;
+        review.position = DURATION;
+        render();
+      }
+
+      function replay() {
+        review.position = 0;
+        review.started = true;
+        review.done = false;
+        review.changedAfterPass = false;
+        render();
+      }
+
+      function resetSample() {
+        review = {
+          destination: "youtube",
+          position: 0,
+          started: false,
+          done: false,
+          changedAfterPass: false,
+          markers: [],
+        };
+        markerId = 0;
+        activeHandoff = null;
+        destinationElement.value = review.destination;
+        render();
+      }
+
+      function jumpTo(time) {
+        review.position = Math.max(0, Math.min(DURATION, time));
+        review.started = true;
+        review.done = false;
+        review.changedAfterPass = false;
+        render();
+      }
+
+      function dropMarker() {
+        const chapter = currentChapter();
+        const owners = ["captions", "visuals", "audio", "framing"];
+        const owner = owners[review.markers.length % owners.length];
+        markerId += 1;
+        review.markers.push({
+          id: `m${markerId}`,
+          time: review.position,
+          owner,
+          note: `Review ${chapter.title.toLowerCase()} around ${formatTime(review.position)}.`,
+        });
+        review.started = true;
+        render();
+      }
+
+      function resolveMarker(id) {
+        review.markers = review.markers.filter((marker) => marker.id !== id);
+        if (activeHandoff && activeHandoff.id === id) {
+          activeHandoff = null;
+        }
+        render();
+      }
+
+      function openMarker(marker) {
+        activeHandoff = { id: marker.id, time: marker.time, owner: marker.owner, note: marker.note };
+        review.position = marker.time;
+        review.started = true;
+        review.done = false;
+        review.changedAfterPass = false;
+        render();
+      }
+
+      function render() {
+        const evaluation = evaluate(review);
+        renderFrame();
+        renderProgress(evaluation);
+        renderActions(evaluation);
+        renderChapters();
+        renderSummary(evaluation);
+        renderMarkers();
+        renderHandoff();
+      }
+
+      function renderFrame() {
+        const chapter = currentChapter();
+        const destination = destinations[review.destination] || destinations.youtube;
+
+        const destinationChip = document.createElement("div");
+        destinationChip.className = "destination-chip";
+        destinationChip.textContent = destination.frame;
+
+        const brandChip = document.createElement("div");
+        brandChip.className = "brand-chip";
+        brandChip.textContent = "Founders Weekly";
+
+        const timeChip = document.createElement("div");
+        timeChip.className = "time-chip";
+        timeChip.textContent = formatTime(review.position);
+
+        const layout = document.createElement("div");
+        layout.className = "speaker-layout";
+        layout.append(renderSpeaker("Host", "primary"), renderSpeaker("Guest", "secondary"));
+
+        const visual = document.createElement("div");
+        visual.className = "visual-moment";
+        const visualTitle = document.createElement("strong");
+        visualTitle.textContent = chapter.visual;
+        const visualCopy = document.createElement("span");
+        visualCopy.textContent = "Approved moment shown in context";
+        visual.append(visualTitle, visualCopy);
+
+        const caption = document.createElement("div");
+        caption.className = "caption";
+        caption.textContent = chapter.caption;
+
+        frameElement.replaceChildren(destinationChip, brandChip, timeChip, layout, visual, caption);
+      }
+
+      function renderSpeaker(name, variant) {
+        const speaker = document.createElement("div");
+        speaker.className = `speaker ${variant}`;
+        const label = document.createElement("span");
+        label.className = "lower-third";
+        label.textContent = name;
+        speaker.append(label);
+        return speaker;
+      }
+
+      function renderProgress(evaluation) {
+        positionElement.textContent = formatTime(review.position);
+        durationElement.textContent = formatTime(DURATION);
+        progressElement.style.width = `${evaluation.progress}%`;
+      }
+
+      function renderActions(evaluation) {
+        const buttons = [];
+
+        if (evaluation.watchState === "stale") {
+          buttons.push(actionButton("Start fresh watch-through", startOrContinue));
+        } else if (evaluation.watchState === "watched, looks good" || evaluation.watchState === "watched, has notes") {
+          buttons.push(actionButton("Replay from start", replay));
+        } else {
+          buttons.push(actionButton(review.started ? "Continue watching" : "Start watch-through", startOrContinue));
+        }
+
+        if (evaluation.watchState !== "stale" && !review.done) {
+          buttons.push(actionButton("Mark watched through", markDone, "secondary"));
+        }
+
+        if (evaluation.watchState !== "stale") {
+          buttons.push(actionButton("Drop soft marker", dropMarker, "secondary"));
+        }
+
+        buttons.push(actionButton("Reset sample", resetSample, "secondary"));
+        actionsElement.replaceChildren(...buttons);
+      }
+
+      function actionButton(label, handler, tone) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = label;
+        if (tone) {
+          button.className = tone;
+        }
+        button.addEventListener("click", handler);
+        return button;
+      }
+
+      function renderChapters() {
+        chaptersElement.replaceChildren(
+          ...chapters.map((chapter) => {
+            const article = document.createElement("article");
+            article.className = "chapter";
+
+            const time = document.createElement("span");
+            time.className = "chapter-time";
+            time.textContent = formatTime(chapter.time);
+
+            const body = document.createElement("div");
+            const title = document.createElement("strong");
+            title.textContent = chapter.title;
+            const copy = document.createElement("span");
+            copy.textContent = chapter.caption;
+            body.append(title, copy);
+
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "mini secondary";
+            button.textContent = "Jump";
+            button.addEventListener("click", () => jumpTo(chapter.time));
+
+            article.append(time, body, button);
+            return article;
+          }),
+        );
+      }
+
+      function renderSummary(evaluation) {
+        const className = stateClass(evaluation.watchState);
+        statusElement.className = `status ${className}`;
+        statusElement.textContent = stateLabel(evaluation.watchState);
+
+        const cards = [
+          ["Current pass", stateLabel(evaluation.watchState), evaluation.message],
+          ["Resume point", formatTime(review.position), "The preview remembers where the creator stopped."],
+          ["Open notes", String(evaluation.markerCount), "Soft markers stay as revisit notes, not export blockers."],
+          ["Destination", destinations[review.destination].label, "The frame matches the version being watched."],
+        ];
+
+        summaryElement.replaceChildren(
+          ...cards.map(([title, value, copy]) => {
+            const card = document.createElement("article");
+            card.className = "summary-card";
+            const strong = document.createElement("strong");
+            strong.textContent = value;
+            const label = document.createElement("span");
+            label.textContent = title;
+            const detail = document.createElement("span");
+            detail.textContent = copy;
+            card.append(strong, label, detail);
+            return card;
+          }),
+        );
+      }
+
+      function renderMarkers() {
+        if (!review.markers.length) {
+          const empty = document.createElement("p");
+          empty.className = "empty";
+          empty.textContent = "Drop a soft marker when something feels off. The marker stays attached to this finished episode moment.";
+          markersElement.replaceChildren(empty);
+          return;
+        }
+
+        markersElement.replaceChildren(
+          ...review.markers.map((marker) => {
+            const article = document.createElement("article");
+            article.className = "marker";
+
+            const head = document.createElement("div");
+            head.className = "marker-head";
+            const title = document.createElement("strong");
+            title.textContent = `${formatTime(marker.time)} - ${ownerOptions[marker.owner]}`;
+            const route = document.createElement("span");
+            route.textContent = `Revisit in ${ownerOptions[marker.owner]}`;
+            head.append(title, route);
+
+            const note = document.createElement("span");
+            note.textContent = marker.note;
+
+            const actions = document.createElement("div");
+            actions.className = "marker-actions";
+            const jump = actionButton("Jump to note", () => jumpTo(marker.time), "mini secondary");
+            const open = actionButton("Open review", () => openMarker(marker), "mini secondary");
+            const resolve = actionButton("Resolve note", () => resolveMarker(marker.id), "mini");
+            actions.append(jump, open, resolve);
+
+            article.append(head, note, actions);
+            return article;
+          }),
+        );
+      }
+
+      function renderHandoff() {
+        if (!activeHandoff) {
+          handoffElement.replaceChildren();
+          handoffElement.className = "";
+          return;
+        }
+
+        handoffElement.className = "handoff";
+        const title = document.createElement("strong");
+        title.textContent = `${ownerOptions[activeHandoff.owner]} opens at ${formatTime(activeHandoff.time)}`;
+        const copy = document.createElement("span");
+        copy.textContent = activeHandoff.note || "Review this finished episode moment.";
+        handoffElement.replaceChildren(title, copy);
+      }
+
+      function stateLabel(state) {
+        return {
+          "not watched": "Not watched yet",
+          "in progress": "Watch-through in progress",
+          "watched, looks good": "Watched, looks good",
+          "watched, has notes": "Watched with notes",
+          stale: "Needs a fresh pass",
+        }[state];
+      }
+
+      function stateClass(state) {
+        return {
+          "not watched": "not-watched",
+          "in progress": "in-progress",
+          "watched, looks good": "watched-good",
+          "watched, has notes": "watched-notes",
+          stale: "stale",
+        }[state];
+      }
+
+      render();
+    </script>
+  </body>
+</html>
