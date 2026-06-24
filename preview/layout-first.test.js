@@ -743,6 +743,14 @@ assert.equal(
 assert.equal(reuse.zonesBySlot.host.classList.contains("filled"), true, "the reused source stays in its new slot");
 assert.deepEqual(reuse.duplicateFileNames(), [], "no duplicate recording across slots after switching back");
 
+// The placement step tells creators they can drop every speaker recording at once, so the
+// multi-file drop capability is discoverable from the copy and not only by trying it.
+assert.match(
+  html,
+  /drop them all at once to fill the open slots in order/i,
+  "the placement step surfaces dropping all speaker videos at once",
+);
+
 // Multi-file placement: dropping several recordings at once fills the slot they land on
 // and spills the rest into the next empty visible slots in order, so a creator can drop
 // all their speaker videos together instead of one slot at a time (#1026).
